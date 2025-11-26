@@ -17,6 +17,10 @@ export default function CreatePost({ onCreated }: { onCreated?: (id: string) => 
 
     setLoading(true);
     try {
+      if (!db) {
+        console.error("Firestore is not initialized");
+        return;
+      }
       const colRef = collection(db, "posts");
       // create the post document first so we can attach images under its id
       const docRef = await addDoc(colRef, { title, likes: 0, createdAt: new Date(), images: [] });

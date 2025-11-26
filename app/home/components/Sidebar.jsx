@@ -3,7 +3,7 @@ import React from "react";
 
 import { useEffect, useState } from "react"
 import { BookmarkIcon, HeartIcon, StarIcon } from "lucide-react"
-import { Button } from "@/components/ui/button.tsx";
+import { Button } from "@/components/ui/button";
 import { ClipboardPlus,MapPinned,House } from 'lucide-react';
 import {
   InputGroup,
@@ -55,10 +55,10 @@ export default function SideBar({catData,map_center,filterCatData,toggleHideSide
   return (
     <aside className="w-full md:w-10 border-r border-slate-200 bg-slate-50/80 backdrop-blur-sm">
       <div className="h-full flex flex-col gap-9 overflow-y-auto p-1">
-        {/* <ClipboardPlus w-4 h-5/> */}
-        <House w-1 h-1/>
-        <MapPinned w-1 h-1/>
-        <Funnel w-1 h-1/>
+        {/* <ClipboardPlus size={16} /> */}
+        <House size={16} />
+        <MapPinned size={16} />
+        <Funnel size={16} />
         
         {/* <PrimaryButton className="w-full mt-4">Apply Filters</PrimaryButton> */}
       </div>

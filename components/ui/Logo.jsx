@@ -8,7 +8,12 @@ export default function Logo() {
         {/* <span className="text-xl text-white">🐾</span>
       </div> */}
       {/* <span className="font-semibold text-xl text-slate-900">FindMyPet</span> */}
-      <Image src='/assets/logobrand.png' height={100} width={100} alt="logo"
+      <Image 
+        src='/assets/logobrand.png' 
+        height={100} 
+        width={100} 
+        alt="logo"
+        style={{ width: 'auto', height: '100px' }}
       />
      </div>
   );
