@@ -18,7 +18,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import dynamic from "next/dynamic";
-const MapView = dynamic(() => import("@/components/ui/MapView.jsx"), {
+const MapView = dynamic(() => import("@/components/ui/MapView"), {
   ssr: false,
 });
 import Social from "@/app/Social/page.tsx"

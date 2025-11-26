@@ -1,82 +1,34 @@
-"use client"
-import { loginWithGoogle, logout } from "@/lib/firebase"
-import { useEffect, useState } from "react"
-import { auth } from "@/lib/firebase"
-import ScrollArea from "@/components/ScrollArea"
-import VisitCounter from "@/components/VisitCounter"
-import CreatePost from "@/components/CreatePost";
-import PostCard from "@/components/PostCard";
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
-import UnifiedMap from "./components/UnifiedMap"
-import HomePage from "./components/HomePage"
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-// import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import  AppSidebar  from "@/components/app-sidebar"
-interface Post {
-  id: string;
-  title: string;
-  likes?: number;
-  createdAt?: any; // Firestore timestamp
-}
-export default function home({}) {
-  // const [user, setUser] = useState<any>(null)
- const [posts, setPosts] = useState<Post[]>([]);
+"use client";
 
-  // Load all posts from Firestore
-  const loadPosts = async () => {
-    try {
-      const ref = collection(db, "posts");
-      const snap = await getDocs(ref);
-      const data: Post[] = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Post, "id">),
-      }));
-      setPosts(data);
-    } catch (err) {
-      console.error("Error loading posts:", err);
-    }
-  };
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import HomePage from "./components/HomePage";
+
+export default function Home() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    loadPosts()
-  },[])
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
 
- 
+  if (loading) {
     return (
-      <>
-      {/* <div className="flex items-center space-x-4">
-        {/* <img src={user.photoURL} alt="avatar" className="w-8 h-8 rounded-full" /> */}
-        {/* <span>Hi, {user.displayName}</span> */}
-        {/* <VisitCounter /> 
-        <button
-          onClick={logout}
-          className="px-3 py-1 bg-red-500 text-white rounded-md"
-        >
-          Logout
-        </button>
-      </div> */}
-      <div>
-       {/* <CreatePost onCreated={loadPosts} /> */}
-      
-      <div className="w-full">
-          {/* <SidebarProvider>
-              <AppSidebar /> */}
-              {/* <SidebarTrigger /> */}
-        <HomePage/>
-         {/* </SidebarProvider> */}
-            
-      <div>
-      {/* {posts.length > 0 ? (
-        posts.map((p) => <PostCard key={p.id} postId={p.id} title={p.title} />)
-      ) : (
-        <p className="text-gray-500">No posts yet. Create one above!</p>
-      )} */}
-      </div>
-        {/* <ScrollArea /> */}
-        {/* <UnifiedMap /> */}
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading...</p>
         </div>
       </div>
-      </>
-    )
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return <HomePage />;
 }

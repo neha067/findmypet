@@ -1,84 +1,232 @@
-import { useEffect, useState } from "react"
-import CreatePost from "@/components/CreatePost";
-import { collection, getDocs } from "firebase/firestore";
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import PostCard from "@/components/PostCard";
-import VisitCounter from "@/components/VisitCounter"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area";
 import CreatePostForm from "./components/CreatePostForm";
-import FoundForm from "./components/FoundForm"
+import FoundForm from "./components/FoundForm";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui/tabs"
+} from "@/components/ui/tabs";
+
 interface Post {
   id: string;
-  title: string;
+  title?: string;
+  type?: "missing" | "found";
+  catId?: string;
   likes?: number;
-  createdAt?: any; // Firestore timestamp
+  likeCount?: number;
+  createdAt?: any;
+  imageUrl?: string;
+  description?: string;
 }
-const Social = () => {
-    const [posts, setPosts] = useState<Post[]>([]);
-    // Load all posts from Firestore
-      const loadPosts = async () => {
-        try {
-          const ref = collection(db, "posts");
-          const snap = await getDocs(ref);
-          const data: Post[] = snap.docs.map((doc) => ({
-            id: doc.id,
-            ...(doc.data() as Omit<Post, "id">),
-          }));
-          setPosts(data);
-        } catch (err) {
-          console.error("Error loading posts:", err);
-        }
-      };
-    useEffect(() => {
-        loadPosts()
-    },[])
-    return(
-     <>
-     <div className="w-full">
-        <div className="flex items-center space-x-4">
-            <VisitCounter /> 
-        </div> 
-      <Tabs defaultValue="account">
-             <TabsList>
-               <TabsTrigger value="account">Timeline</TabsTrigger>
-               <TabsTrigger value="password">Missing</TabsTrigger>
-               <TabsTrigger value="found">Found</TabsTrigger>
-             </TabsList>
-             <TabsContent value="account" className="w-full justify-center">
-               
-               <div>
-               
-                <ScrollArea className="h-[480px] justify-center w-full rounded-md border p-4">     
-                <div className="w-full flex justify-center flex-col gap-3">
-                    {posts.length > 0 ? (
-                        posts.map((p) => <PostCard key={p.id} postId={p.id} title={p.title} />)
-                    ) : (
-                        <p className="text-gray-500">No posts yet. Create one above!</p>
-                    )} 
-                </div>
-                </ScrollArea>  
-            </div>  
-               
-             </TabsContent>
-             <TabsContent value="password">
-              {/* <CreatePost onCreated={loadPosts} />  */}
-              <CreatePostForm />
-             </TabsContent>
-              <TabsContent value="found">
-              {/* <CreatePost onCreated={loadPosts} />  */}
-              <FoundForm />
-             </TabsContent>
-           </Tabs>
-        </div>
+
+interface FilterState {
+  missingCatCheck: boolean;
+  foundCatCheck: boolean;
+  colorFilter: string | null;
+  ageFilter: string | null;
+}
+
+interface CatData {
+  id: string;
+  color?: string;
+  age?: string;
+  status?: string;
+}
+
+interface SocialProps {
+  filterState?: FilterState;
+  catData?: CatData[];
+}
+
+const Social = ({ filterState, catData = [] }: SocialProps) => {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("account");
+  
+  // Filter posts when filterState or posts change
+  const filteredPosts = (() => {
+    if (!filterState) {
+      return posts;
+    }
+
+    return posts.filter((post) => {
+      // Filter by type (missing/found)
+      const typeMatches = 
+        (filterState.missingCatCheck && post.type === "missing") ||
+        (filterState.foundCatCheck && post.type === "found");
+
+      if (!filterState.missingCatCheck && !filterState.foundCatCheck) {
+        return false;
+      }
+
+      if (!typeMatches) {
+        return false;
+      }
+
+      // Filter by color/age if post has catId and we have cat data
+      if (post.catId && catData.length > 0) {
+        const cat = catData.find((c) => c.id === post.catId);
         
-           
-    </>
-    )
-}
+        if (cat) {
+          // Filter by color
+          if (filterState.colorFilter) {
+            if (!cat.color || String(cat.color).toLowerCase().trim() !== String(filterState.colorFilter).toLowerCase().trim()) {
+              return false;
+            }
+          }
+
+          // Filter by age
+          if (filterState.ageFilter) {
+            if (!cat.age) {
+              return false;
+            }
+            const itemAge = String(cat.age).toLowerCase().trim();
+            const filterAge = String(filterState.ageFilter).toLowerCase().trim();
+            
+            if (itemAge !== filterAge) {
+              if (filterAge === "adult" && itemAge === "senior") {
+                // Senior cats included in adult
+              } else {
+                return false;
+              }
+            }
+          }
+        }
+      }
+
+      return true;
+    });
+  })();
+  
+
+  // Real-time listener for posts
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === "undefined") return;
+
+    // Check if Firebase is initialized
+    if (!db) {
+      console.error("Firestore is not initialized. Check Firebase configuration.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const postsRef = collection(db, "posts");
+      const q = query(postsRef, orderBy("createdAt", "desc"));
+
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          try {
+            const data: Post[] = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...(doc.data() as Omit<Post, "id">),
+            }));
+            setPosts(data);
+            setLoading(false);
+          } catch (error) {
+            console.error("Error processing posts data:", error);
+            setLoading(false);
+            setPosts([]);
+          }
+        },
+        (error) => {
+          console.error("Error loading posts:", error);
+          setLoading(false);
+          setPosts([]);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (error) {
+      console.error("Error setting up posts listener:", error);
+      setLoading(false);
+      setPosts([]);
+    }
+  }, []);
+  return (
+    <div className="w-full max-w-5xl mx-auto">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="account">Timeline</TabsTrigger>
+          <TabsTrigger value="missing">Report Missing</TabsTrigger>
+          <TabsTrigger value="found">Report Found</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="account" className="mt-4">
+          {/* Quick Create Post Buttons */}
+          <div className="mb-4 flex gap-2 flex-wrap">
+            <button
+              onClick={() => setActiveTab("missing")}
+              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              🐱 Report Missing Cat
+            </button>
+            <button
+              onClick={() => setActiveTab("found")}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
+            >
+              ✅ Report Found Cat
+            </button>
+          </div>
+          
+          <ScrollArea className="h-[calc(100vh-16rem)] w-full rounded-md border dark:border-slate-700 p-4">
+            <div className="w-full flex flex-col items-center gap-4">
+              {loading ? (
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                  <p className="text-gray-500 dark:text-gray-400">Loading posts...</p>
+                </div>
+              ) : filteredPosts.length > 0 ? (
+                <>
+                  {filterState && (filterState.missingCatCheck !== true || filterState.foundCatCheck !== true || filterState.colorFilter || filterState.ageFilter) && (
+                    <div className="w-full mb-2 px-3 py-2 bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 rounded-lg text-sm">
+                      <span className="text-violet-800 dark:text-violet-200">
+                        🔍 Showing {filteredPosts.length} of {posts.length} posts
+                      </span>
+                    </div>
+                  )}
+                  {filteredPosts.map((p) => (
+                  <PostCard 
+                    key={p.id} 
+                    postId={p.id} 
+                    title={p.title || "Untitled Post"}
+                    imageUrl={p.imageUrl}
+                  />
+                  ))}
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 dark:text-gray-400 mb-2">
+                    No posts yet.
+                  </p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">
+                    Report a missing or found cat to start the timeline!
+                  </p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+        
+        <TabsContent value="missing" className="mt-4">
+          <CreatePostForm />
+        </TabsContent>
+        
+        <TabsContent value="found" className="mt-4">
+          <FoundForm />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
 export default Social;

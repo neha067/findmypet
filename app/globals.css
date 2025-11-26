@@ -148,3 +148,13 @@
     --sidebar-ring: oklch(0.439 0 0);
   }
 }
+
+/* Fix for Next.js portal elements - hide duplicate portals */
+nextjs-portal {
+  display: none !important;
+}
+
+/* Ensure Radix UI portals render correctly */
+[data-radix-portal] {
+  z-index: 9999;
+}
