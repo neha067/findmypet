@@ -7,7 +7,7 @@ import ColorPill from "../ui/ColorPill.jsx";
 import AgePill from "../ui/AgePill.jsx";
 import { useEffect, useState } from "react"
 import { BookmarkIcon, HeartIcon, StarIcon } from "lucide-react"
-import { Button } from "@/components/ui/button.tsx";
+import { Button } from "@/components/ui/button";
 import { ClipboardPlus,Funnel } from 'lucide-react';
 import { FlagTriangleRight } from 'lucide-react';
 import {

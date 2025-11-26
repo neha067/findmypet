@@ -21,7 +21,7 @@ import dynamic from "next/dynamic";
 const MapView = dynamic(() => import("@/components/ui/MapView"), {
   ssr: false,
 });
-import Social from "@/app/Social/page.tsx"
+import Social from "@/app/Social/page"
 
 const TabsNav = ({map_center,filteredData}) => {
   return (

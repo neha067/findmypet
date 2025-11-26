@@ -21,6 +21,10 @@ export default function Login() {
 
   // Load all posts from Firestore
   const loadPosts = async () => {
+    if (!db) {
+      console.error("Firestore is not initialized");
+      return;
+    }
     try {
       const ref = collection(db, "posts");
       const snap = await getDocs(ref);
@@ -35,6 +39,10 @@ export default function Login() {
   };
 
   useEffect(() => {
+    if (!auth) {
+      console.error("Firebase auth is not initialized");
+      return;
+    }
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser)
     })
@@ -47,9 +55,7 @@ export default function Login() {
 
   if (user)
     return (
-  <>
-      <Home user={user}/>
-      </>
+      <Home />
     )
 
   return (

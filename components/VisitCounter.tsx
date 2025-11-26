@@ -6,10 +6,14 @@ import { doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
 import { Eye } from "lucide-react";
 
 export default function VisitCounter({ pageId = "homepage" }) {
-  const [count, setCount] = useState(null);
+  const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
     const incrementVisit = async () => {
+      if (!db) {
+        console.error("Firestore is not initialized");
+        return;
+      }
       try {
         const ref = doc(db, "visits", pageId);
         const snap = await getDoc(ref);

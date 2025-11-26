@@ -4,10 +4,10 @@ import React, { useEffect, useState } from "react";
 import Header from "@/components/ui/Header.jsx";
 import FilterSideBar from "@/components/ui/FilterSideBar.jsx";
 import dynamic from "next/dynamic";
-import { Button } from "@/components/ui/button.tsx";
+import { Button } from "@/components/ui/button";
 import SideBar from "./Sidebar.jsx";
 import { PanelRight } from 'lucide-react';
-import Social from "@/app/Social/page.tsx";
+import Social from "@/app/Social/page";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
@@ -172,7 +172,12 @@ export default function HomePage() {
         
         {/* Collapsed Sidebar */}
         <div className={`group ${showsidebar ? "hidden" : "block"} md:hidden`}>
-          <SideBar />
+          <SideBar 
+            catData={catData}
+            map_center={map_center}
+            filterCatData={filterCatData}
+            toggleHideSidebar={toggleHideSidebar}
+          />
         </div>
 
         <section className="flex-1 px-4 md:px-0">

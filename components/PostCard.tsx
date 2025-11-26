@@ -49,7 +49,10 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
       return;
     }
 
-    const postRef = doc(db, "posts", postId);
+    // Create local const for TypeScript type narrowing
+    const dbInstance = db;
+    
+    const postRef = doc(dbInstance, "posts", postId);
 
     // Real-time listener for post data
     const unsubscribePost = onSnapshot(postRef, async (snap) => {
@@ -59,7 +62,7 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
 
         // Check if user liked this post
         if (user) {
-          const likeRef = doc(db, "posts", postId, "likes", user.uid);
+          const likeRef = doc(dbInstance, "posts", postId, "likes", user.uid);
           const likeSnap = await getDoc(likeRef);
           setIsLiked(likeSnap.exists());
         }
@@ -68,7 +71,7 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
     });
 
     // Real-time listener for comments
-    const commentsRef = collection(db, "posts", postId, "comments");
+    const commentsRef = collection(dbInstance, "posts", postId, "comments");
     const q = query(commentsRef, orderBy("createdAt", "desc"));
     const unsubscribeComments = onSnapshot(q, (snap) => {
       setComments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -101,11 +104,15 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
     setLikes(previousLiked ? previousLikes - 1 : previousLikes + 1);
 
     try {
-      const postRef = doc(db, "posts", postId);
-      const likeRef = doc(db, "posts", postId, "likes", user.uid);
+      // TypeScript now knows db is defined after the check above
+      const dbInstance = db; // Create a local const for type narrowing
+      if (!dbInstance) return;
+      
+      const postRef = doc(dbInstance, "posts", postId);
+      const likeRef = doc(dbInstance, "posts", postId, "likes", user.uid);
 
       // Use transaction for atomic operations
-      await runTransaction(db, async (transaction) => {
+      await runTransaction(dbInstance, async (transaction) => {
         const postSnap = await transaction.get(postRef);
         
         if (!postSnap.exists()) {

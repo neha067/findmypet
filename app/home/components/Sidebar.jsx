@@ -3,7 +3,7 @@ import React from "react";
 
 import { useEffect, useState } from "react"
 import { BookmarkIcon, HeartIcon, StarIcon } from "lucide-react"
-import { Button } from "@/components/ui/button.tsx";
+import { Button } from "@/components/ui/button";
 import { ClipboardPlus,MapPinned,House } from 'lucide-react';
 import {
   InputGroup,
