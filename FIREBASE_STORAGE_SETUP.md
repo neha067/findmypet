@@ -87,3 +87,4 @@ After configuring, test by:
 
 If CORS continues to be an issue, we can modify the upload code to use Firebase Admin SDK or configure proper headers.
 
+# need to setup in firebase
