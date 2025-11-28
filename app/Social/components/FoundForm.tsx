@@ -24,12 +24,15 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+// No need to import default image functions - we use icons instead
 
 const FoundForm = () => {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
+    petType: "" as "cat" | "dog" | "other" | "",
     color: "",
     gender: "",
     age: "",
@@ -43,20 +46,53 @@ const FoundForm = () => {
     image: null as File | null,
   });
 
-  const handleInputChange = (field: string, value: string | File | null) => {
+const handleInputChange = (field: string, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.petType) {
+      newErrors.petType = "Please select a pet type";
+    }
+    if (!formData.color) {
+      newErrors.color = "Please select a color";
+    }
+    if (!formData.location || formData.location.trim() === "") {
+      newErrors.location = "Please enter a location";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
-      alert("Please login to report a found cat");
+      alert("Please login to report a found pet");
       return;
     }
 
-    if (!formData.color || !formData.location) {
-      alert("Please fill in at least color and location");
+    // Validate form and show errors
+    if (!validateForm()) {
+      const errorFields = Object.keys(errors).join(", ");
+      alert(`Please fill in all required fields. Missing: ${errorFields}`);
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      const element = document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -110,6 +146,9 @@ const FoundForm = () => {
           throw new Error(errorMessage);
         }
       }
+      
+      // If no image uploaded, imageUrl will remain empty
+      // This will trigger icon display in PostCard instead of an image
 
       // Calculate found date
       const foundDateObj = formData.foundDate
@@ -127,11 +166,12 @@ const FoundForm = () => {
       try {
         const catsRef = collection(db, "cats");
         catDocRef = await addDoc(catsRef, {
+        petType: formData.petType,
         color: formData.color,
         gender: formData.gender || "unknown",
         age: formData.age || "unknown",
         description: formData.description,
-        status: "Found",
+        status: "found",
         location: formData.location,
         position: [lat, lng],
         latitude: lat,
@@ -143,7 +183,8 @@ const FoundForm = () => {
         reportedBy: {
           uid: user.uid,
           name: user.displayName || "Anonymous",
-          email: user.email,
+          email: user.email || "",
+          photo: user.photoURL || null,
         },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -159,15 +200,17 @@ const FoundForm = () => {
       try {
         const postsRef = collection(db, "posts");
         await addDoc(postsRef, {
-        title: `Found: ${formData.color} cat`,
+        title: `Found: ${formData.color} ${formData.petType || "pet"}`,
         type: "found",
+        petType: formData.petType,
         catId: catDocRef.id,
-        description: formData.description || `Found ${formData.color} cat in ${formData.location}`,
+        description: formData.description || `Found ${formData.color} ${formData.petType || "pet"} in ${formData.location}`,
         imageUrl: imageUrl,
         reportedBy: {
           uid: user.uid,
           name: user.displayName || "Anonymous",
-          email: user.email,
+          email: user.email || "",
+          photo: user.photoURL || null,
         },
         createdAt: serverTimestamp(),
         likeCount: 0,
@@ -181,10 +224,11 @@ const FoundForm = () => {
       // Reset loading state first
       setLoading(false);
       
-      alert("Found cat reported successfully!");
+      alert("Found pet reported successfully!");
       
       // Reset form
       setFormData({
+        petType: "",
         color: "",
         gender: "",
         age: "",
@@ -212,7 +256,7 @@ const FoundForm = () => {
       
       // Provide more detailed error message
       const errorMessage = error.message || "Unknown error occurred";
-      alert(`Failed to report found cat: ${errorMessage}\n\nPlease check your connection and try again.`);
+      alert(`Failed to report found pet: ${errorMessage}\n\nPlease check your connection and try again.`);
     }
   };
 
@@ -238,22 +282,50 @@ const FoundForm = () => {
       <form onSubmit={handleSubmit}>
         <FieldGroup>
           <FieldSet>
-            <FieldLegend className="text-xl font-bold">Report a Found Cat</FieldLegend>
+            <FieldLegend className="text-xl font-bold">Report a Found Pet</FieldLegend>
             <FieldDescription>
-              Found a stray cat? Report it here so the owner can find them. Check the Missing tab to see if it matches any reported missing cats.
+              Found a stray pet? Report it here so the owner can find them. Check the Missing tab to see if it matches any reported missing pets.
             </FieldDescription>
             
             <FieldGroup className="mt-4 space-y-4">
+              {/* Pet Type */}
+              <Field>
+                <FieldLabel htmlFor="pet-type">Pet Type *</FieldLabel>
+                <Select
+                  value={formData.petType}
+                  onValueChange={(value) => handleInputChange("petType", value as "cat" | "dog" | "other")}
+                  required
+                >
+                  <SelectTrigger 
+                    id="pet-type"
+                    className={errors.petType ? "border-red-500 border-2" : ""}
+                  >
+                    <SelectValue placeholder="Select pet type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cat">Cat</SelectItem>
+                    <SelectItem value="dog">Dog</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.petType && (
+                  <p className="text-red-500 text-sm mt-1">{errors.petType}</p>
+                )}
+              </Field>
+
               {/* Color and Gender Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field>
-                  <FieldLabel htmlFor="cat-color">Color *</FieldLabel>
+                  <FieldLabel htmlFor="pet-color">Color/Coat Color *</FieldLabel>
                   <Select
                     value={formData.color}
                     onValueChange={(value) => handleInputChange("color", value)}
                     required
                   >
-                    <SelectTrigger id="cat-color">
+                    <SelectTrigger 
+                      id="pet-color"
+                      className={errors.color ? "border-red-500 border-2" : ""}
+                    >
                       <SelectValue placeholder="Select color" />
                     </SelectTrigger>
                     <SelectContent>
@@ -265,6 +337,9 @@ const FoundForm = () => {
                       <SelectItem value="others">Others</SelectItem>
                     </SelectContent>
                   </Select>
+                  {errors.color && (
+                    <p className="text-red-500 text-sm mt-1">{errors.color}</p>
+                  )}
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="cat-gender">Gender</FieldLabel>
@@ -286,19 +361,38 @@ const FoundForm = () => {
 
               {/* Age */}
               <Field>
-                <FieldLabel htmlFor="cat-age">Age</FieldLabel>
+                <FieldLabel htmlFor="pet-age">Age</FieldLabel>
                 <Select
                   value={formData.age}
                   onValueChange={(value) => handleInputChange("age", value)}
                 >
-                  <SelectTrigger id="cat-age">
+                  <SelectTrigger id="pet-age">
                     <SelectValue placeholder="Select age range" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="kitten">Kitten (0-1 year)</SelectItem>
-                    <SelectItem value="young">Young (1-3 years)</SelectItem>
-                    <SelectItem value="adult">Adult (3-7 years)</SelectItem>
-                    <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                    {formData.petType === "cat" && (
+                      <>
+                        <SelectItem value="kitten">Kitten (0-1 year)</SelectItem>
+                        <SelectItem value="young">Young (1-3 years)</SelectItem>
+                        <SelectItem value="adult">Adult (3-7 years)</SelectItem>
+                        <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                      </>
+                    )}
+                    {formData.petType === "dog" && (
+                      <>
+                        <SelectItem value="puppy">Puppy (0-1 year)</SelectItem>
+                        <SelectItem value="young">Young (1-3 years)</SelectItem>
+                        <SelectItem value="adult">Adult (3-7 years)</SelectItem>
+                        <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                      </>
+                    )}
+                    {formData.petType === "other" && (
+                      <>
+                        <SelectItem value="young">Young</SelectItem>
+                        <SelectItem value="adult">Adult</SelectItem>
+                        <SelectItem value="senior">Senior</SelectItem>
+                      </>
+                    )}
                     <SelectItem value="unknown">Unknown</SelectItem>
                   </SelectContent>
                 </Select>
@@ -363,7 +457,11 @@ const FoundForm = () => {
                     value={formData.location}
                     onChange={(e) => handleInputChange("location", e.target.value)}
                     required
+                    className={errors.location ? "border-red-500 border-2" : ""}
                   />
+                  {errors.location && (
+                    <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                  )}
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="latitude">Latitude (Optional)</FieldLabel>
@@ -425,7 +523,7 @@ const FoundForm = () => {
 
           <div className="flex gap-3 mt-6">
             <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? "Submitting..." : "Report Found Cat"}
+              {loading ? "Submitting..." : "Report Found Pet"}
             </Button>
             <Button
               type="button"

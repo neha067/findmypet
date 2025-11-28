@@ -20,18 +20,21 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Heart, MessageCircle } from "lucide-react";
-import { Button } from "./ui/button";
 import Image from "next/image";
+import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import PetIcon, { SocialPostIcon } from "@/components/PetIcon";
+import UserAvatar from "@/components/UserAvatar";
 
 interface PostCardProps {
   postId: string;
   title?: string;
   imageUrl?: string;
   createdAt?: any;
+  petType?: "cat" | "dog" | "other";
 }
 
-export default function PostCard({ postId, title, imageUrl, createdAt }: PostCardProps) {
+export default function PostCard({ postId, title, imageUrl, createdAt, petType }: PostCardProps) {
   const { user } = useAuth();
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -39,6 +42,13 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [postPetType, setPostPetType] = useState<"cat" | "dog" | "other" | undefined>(petType);
+  const [postAuthor, setPostAuthor] = useState<{
+    name: string;
+    email: string;
+    photo?: string;
+  } | null>(null);
+  const [postCreatedAt, setPostCreatedAt] = useState<any>(null);
 
   // Load post + comments + like status
   useEffect(() => {
@@ -59,6 +69,57 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
       if (snap.exists()) {
         const data = snap.data();
         setLikes(data.likeCount || 0);
+        
+        // Get author information
+        if (data.reportedBy) {
+          // Check multiple possible fields for photo URL (for compatibility with old/new posts)
+          let photoUrl = data.reportedBy.photo || data.reportedBy.userPhoto || data.reportedBy.photoURL || null;
+          
+          // If no photo in database but this is the current user's post, use their current photo
+          if (!photoUrl && user && data.reportedBy.uid === user.uid && user.photoURL) {
+            photoUrl = user.photoURL;
+          }
+          
+          // Only set photo if it's a valid non-empty string
+          const validPhoto = photoUrl && typeof photoUrl === 'string' && photoUrl.trim() !== '' && photoUrl !== "null" && photoUrl !== "undefined" ? photoUrl.trim() : null;
+          
+          setPostAuthor({
+            name: data.reportedBy.name || "Anonymous",
+            email: data.reportedBy.email || "",
+            photo: validPhoto,
+          });
+        } else {
+          // Fallback if reportedBy doesn't exist (for old posts)
+          setPostAuthor({
+            name: "Anonymous",
+            email: "",
+            photo: null,
+          });
+        }
+        
+        // Get creation date
+        if (data.createdAt) {
+          setPostCreatedAt(data.createdAt);
+        }
+        
+        // Get petType from post (may be stored directly or need to fetch from cat document)
+        if (data.petType) {
+          setPostPetType(data.petType);
+        } else if (data.catId) {
+          // Fetch petType from cat document if not in post
+          try {
+            const catRef = doc(dbInstance, "cats", data.catId);
+            const catSnap = await getDoc(catRef);
+            if (catSnap.exists()) {
+              const catData = catSnap.data();
+              if (catData.petType) {
+                setPostPetType(catData.petType);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching cat data for petType:", error);
+          }
+        }
 
         // Check if user liked this post
         if (user) {
@@ -205,23 +266,71 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
   }
 
   const displayTitle = title || "Untitled Post";
-  const displayImage = imageUrl || "/assets/test1.jpeg";
+  // Check if we should use icon (if no imageUrl provided)
+  const useIcon = !imageUrl || imageUrl.trim().length === 0;
+
+  // Format date
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "";
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+      
+      if (diffInSeconds < 60) return "just now";
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+      if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+      
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
+    } catch (error) {
+      return "";
+    }
+  };
 
   return (
     <div className="border dark:border-[#3B3B52] rounded-2xl p-4 shadow-lg bg-white dark:bg-[#1A1A28] max-w-md w-full">
+      {/* User Info Header */}
+      <div className="flex items-center gap-3 mb-3">
+        <UserAvatar 
+          photoUrl={postAuthor?.photo} 
+          name={postAuthor?.name || "Anonymous"} 
+          size={40}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold dark:text-gray-200 truncate">
+              {postAuthor?.name || "Anonymous"}
+            </h3>
+            {postCreatedAt && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                {formatDate(postCreatedAt)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      
       <h2 className="text-lg font-semibold dark:text-gray-200 mb-3">{displayTitle}</h2>
       
-      {imageUrl && (
-        <div className="relative w-full h-64 mb-3 rounded-lg overflow-hidden">
+      {/* Show icon if no image, otherwise show image */}
+      <div className="relative w-full h-64 mb-3 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+        {useIcon ? (
+          postPetType || petType ? (
+            <PetIcon petType={postPetType || petType} size={200} />
+          ) : (
+            <SocialPostIcon size={200} />
+          )
+        ) : (
           <Image 
-            src={displayImage} 
+            src={imageUrl} 
             alt={displayTitle}
             fill
             className="object-contain"
             sizes="(max-width: 768px) 100vw, 400px"
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Likes */}
       <div className="flex items-center gap-2 mt-3">
@@ -259,13 +368,11 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
                 className="border dark:border-[#333] p-3 rounded-lg text-sm dark:bg-[#1A1A28] bg-gray-50"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  {c.userPhoto && (
-                    <img 
-                      src={c.userPhoto} 
-                      alt={c.userName}
-                      className="w-6 h-6 rounded-full"
-                    />
-                  )}
+                  <UserAvatar 
+                    photoUrl={c.userPhoto} 
+                    name={c.userName || "Anonymous"} 
+                    size={24}
+                  />
                   <p className="font-semibold text-blue-600 dark:text-blue-400">
                     {c.userName || "Anonymous"}
                   </p>

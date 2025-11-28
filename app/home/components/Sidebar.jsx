@@ -29,8 +29,13 @@ export default function SideBar({catData,map_center,filterCatData,toggleHideSide
     const items = Array.isArray(catData) ? catData : []
 
     const filtered = items.filter((item) => {
+      // Normalize status to lowercase for comparison (new schema uses lowercase)
+      const normalizedStatus = String(item.status || "").toLowerCase().trim();
       // Status filter
-      const statusMatches = (missingCatCheck && item.status === "Missing") || (foundCatCheck && item.status === "Found")
+      const statusMatches = 
+        (missingCatCheck && normalizedStatus === "missing") || 
+        (foundCatCheck && normalizedStatus === "found") ||
+        (normalizedStatus === "adoption"); // Adoption cats always shown
 
       if (!statusMatches) return false
 

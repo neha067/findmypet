@@ -27,8 +27,9 @@ if (typeof window !== "undefined") {
   });
 }
 
-interface CatData {
+interface PetData {
   id: string;
+  petType?: "cat" | "dog" | "other";
   name?: string;
   status: string;
   daysAgo?: number;
@@ -42,7 +43,7 @@ interface CatData {
 
 interface MapViewProps {
   map_center: [number, number];
-  catData: CatData[];
+  catData: PetData[];
 }
 
 export default function MapView({ map_center, catData }: MapViewProps) {
@@ -53,8 +54,8 @@ export default function MapView({ map_center, catData }: MapViewProps) {
   }, []);
 
   useEffect(() => {
-    console.log("🗺️ MapView received catData:", catData.length, "cats");
-    console.log("Sample cats:", catData.slice(0, 2).map(c => ({ id: c.id, name: c.name, status: c.status })));
+    console.log("🗺️ MapView received petData:", catData.length, "pets");
+    console.log("Sample pets:", catData.slice(0, 2).map(c => ({ id: c.id, name: c.name, petType: c.petType, status: c.status })));
   }, [catData]);
 
   if (typeof window === "undefined" || !mounted) {
@@ -84,9 +85,17 @@ export default function MapView({ map_center, catData }: MapViewProps) {
             position={cat.position}
             icon={
               new L.Icon({
-                iconUrl: cat.status === "Missing" 
-                  ? "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png"
-                  : "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+                iconUrl: (() => {
+                  const normalizedStatus = String(cat.status || "").toLowerCase().trim();
+                  if (normalizedStatus === "missing") {
+                    return "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png";
+                  } else if (normalizedStatus === "adoption") {
+                    return "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png";
+                  } else {
+                    // found
+                    return "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png";
+                  }
+                })(),
                 shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
                 iconSize: [25, 41],
                 iconAnchor: [12, 41],
@@ -98,24 +107,30 @@ export default function MapView({ map_center, catData }: MapViewProps) {
             <Popup className="map-popup" maxWidth={300}>
               <Card className="w-full max-w-sm border-0 shadow-none">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{cat.name || "Unknown Cat"}</CardTitle>
+                  <CardTitle className="text-lg">{cat.name || `Unknown ${cat.petType === "dog" ? "Dog" : cat.petType === "other" ? "Pet" : "Cat"}`}</CardTitle>
                   <CardDescription>
+                    {cat.petType && <span className="capitalize">{cat.petType} • </span>}
                     {cat.status} {cat.daysAgo !== undefined ? `• ${cat.daysAgo} days ago` : ""}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-2">
                   <div className="space-y-3">
-                    {cat.imageUrl && (
-                      <div className="relative w-full h-48 rounded-lg overflow-hidden">
-                        <Image
-                          src={cat.imageUrl}
-                          alt={cat.name || "Cat"}
-                          fill
-                          className="object-cover"
-                          sizes="300px"
-                        />
-                      </div>
-                    )}
+                    {/* Show icon if no image, otherwise show image */}
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                      {cat.imageUrl && cat.imageUrl.trim() ? (
+                        <div className="relative w-full h-full">
+                          <Image
+                            src={cat.imageUrl}
+                            alt={cat.name || (cat.petType === "dog" ? "Dog" : cat.petType === "other" ? "Pet" : "Cat")}
+                            fill
+                            className="object-cover"
+                            sizes="300px"
+                          />
+                        </div>
+                      ) : (
+                        <PetIcon petType={cat.petType} size={120} />
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {cat.color && (
                         <div className="flex flex-col">
@@ -145,15 +160,29 @@ export default function MapView({ map_center, catData }: MapViewProps) {
                   </div>
                 </CardContent>
                 <CardFooter className="pt-2">
-                  {cat.status === 'Missing' ? (
-                    <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white">
-                      View Details
-                    </Button>
-                  ) : (
-                    <Button variant="outline" className="w-full">
-                      Contact Finder
-                    </Button>
-                  )}
+                  {(() => {
+                    const normalizedStatus = String(cat.status || "").toLowerCase().trim();
+                    if (normalizedStatus === "missing") {
+                      return (
+                        <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white">
+                          View Details
+                        </Button>
+                      );
+                    } else if (normalizedStatus === "adoption") {
+                      return (
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                          Contact for Adoption
+                        </Button>
+                      );
+                    } else {
+                      // found
+                      return (
+                        <Button variant="outline" className="w-full">
+                          Contact Finder
+                        </Button>
+                      );
+                    }
+                  })()}
                 </CardFooter>
               </Card>
             </Popup>
@@ -167,7 +196,7 @@ export default function MapView({ map_center, catData }: MapViewProps) {
                 No cats reported yet
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-500">
-                Report a missing or found cat to see it on the map
+                Report a missing or found pet to see it on the map
               </p>
             </div>
           </div>

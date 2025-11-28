@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { LatLngTuple } from "leaflet";
+// No need to import default image functions - we use icons instead
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
 });
@@ -35,7 +36,9 @@ const CreatePostForm = () => {
   const router = useRouter();
   // const map_center: LatLngTuple = [12.9716, 77.5946];
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
+    petType: "" as "cat" | "dog" | "other" | "",
     name: "",
     color: "",
     gender: "",
@@ -53,6 +56,14 @@ const CreatePostForm = () => {
 
   const handleInputChange = (field: string, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
   };
   const [map_center, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
 
@@ -67,16 +78,66 @@ const CreatePostForm = () => {
     
   },[map_center])
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Post type is always required
+    if (!formData.postType) {
+      newErrors.postType = "Please select a post type";
+    }
+
+    // For non-social posts, validate all required fields
+    if (formData.postType !== "social") {
+      if (!formData.petType) {
+        newErrors.petType = "Please select a pet type";
+      }
+      if (!formData.color) {
+        newErrors.color = "Please select a color";
+      }
+      if (!formData.gender) {
+        newErrors.gender = "Please select a gender";
+      }
+      if (!formData.age) {
+        newErrors.age = "Please select an age";
+      }
+      if (!formData.location || formData.location.trim() === "") {
+        newErrors.location = "Please enter a location";
+      }
+      // Name required only for missing posts
+      if (formData.postType === "missing" && (!formData.name || formData.name.trim() === "")) {
+        newErrors.name = "Please enter the pet's name";
+      }
+    }
+
+    // For social posts, only description is required
+    if (formData.postType === "social") {
+      if (!formData.description || formData.description.trim() === "") {
+        newErrors.description = "Please enter a description";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
-      alert("Please login to report a missing cat");
+      alert("Please login to report a missing pet");
       return;
     }
 
-    if (!formData.name || !formData.color || !formData.location) {
-      alert("Please fill in all required fields");
+    // Validate form and show errors
+    if (!validateForm()) {
+      const errorFields = Object.keys(errors).join(", ");
+      alert(`Please fill in all required fields. Missing: ${errorFields}`);
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      const element = document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -130,6 +191,9 @@ const CreatePostForm = () => {
           throw new Error(errorMessage);
         }
       }
+      
+      // If no image uploaded, imageUrl will remain empty
+      // This will trigger icon display in PostCard instead of an image
 
       // Calculate missing date
       const missingDateObj = formData.missingDate 
@@ -147,6 +211,7 @@ const CreatePostForm = () => {
       try {
         const catsRef = collection(db, "cats");
         catDocRef = await addDoc(catsRef, {
+        petType: formData.petType,
         name: formData.name,
         color: formData.color,
         gender: formData.gender || "unknown",
@@ -164,7 +229,8 @@ const CreatePostForm = () => {
         reportedBy: {
           uid: user.uid,
           name: user.displayName || "Anonymous",
-          email: user.email,
+          email: user.email || "",
+          photo: user.photoURL || null,
         },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -182,13 +248,15 @@ const CreatePostForm = () => {
         await addDoc(postsRef, {
         title: `Missing: ${formData.name}`,
         type: "missing",
+        petType: formData.petType,
         catId: catDocRef.id,
-        description: formData.description || `Missing ${formData.color} cat named ${formData.name}`,
+        description: formData.description || `Missing ${formData.color} ${formData.petType || "pet"} named ${formData.name}`,
         imageUrl: imageUrl,
         reportedBy: {
           uid: user.uid,
           name: user.displayName || "Anonymous",
-          email: user.email,
+          email: user.email || "",
+          photo: user.photoURL || null,
         },
         createdAt: serverTimestamp(),
         likeCount: 0,
@@ -206,6 +274,7 @@ const CreatePostForm = () => {
       
       // Reset form
       setFormData({
+        petType: "",
         name: "",
         color: "",
         gender: "",
@@ -274,13 +343,16 @@ const CreatePostForm = () => {
             <FieldGroup className="mt-4 space-y-4">
               {/*cat status */}
                <Field>
-                <FieldLabel htmlFor="cat-name">Post type *</FieldLabel>
+                <FieldLabel htmlFor="post-type">Post type *</FieldLabel>
                  <Select
                     value={formData.postType}
                     onValueChange={(value) => handleInputChange("postType", value)}
                     required
                   >
-                    <SelectTrigger id="cat-color">
+                    <SelectTrigger 
+                      id="post-type"
+                      className={errors.postType ? "border-red-500 border-2" : ""}
+                    >
                       <SelectValue placeholder="Select type of post" />
                     </SelectTrigger>
                     <SelectContent>
@@ -290,46 +362,88 @@ const CreatePostForm = () => {
                       <SelectItem value="social">Just for fun</SelectItem>
                     </SelectContent>
                   </Select>
+                  {errors.postType && (
+                    <p className="text-red-500 text-sm mt-1">{errors.postType}</p>
+                  )}
               </Field>
 
               {formData.postType !== 'social' ? 
 
               <>
 
-              {/* Cat Name */}
+              {/* Pet Type */}
               <Field>
-                <FieldLabel htmlFor="cat-name">{formData.postType === 'missing' ?
-                'Cat Name*' :'Cat Name'}</FieldLabel>
+                <FieldLabel htmlFor="pet-type">Pet Type *</FieldLabel>
+                <Select
+                  value={formData.petType}
+                  onValueChange={(value) => handleInputChange("petType", value as "cat" | "dog" | "other")}
+                  required
+                >
+                  <SelectTrigger 
+                    id="pet-type"
+                    className={errors.petType ? "border-red-500 border-2" : ""}
+                  >
+                    <SelectValue placeholder="Select pet type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cat">Cat</SelectItem>
+                    <SelectItem value="dog">Dog</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.petType && (
+                  <p className="text-red-500 text-sm mt-1">{errors.petType}</p>
+                )}
+              </Field>
+
+              {/* Pet Name */}
+              <Field>
+                <FieldLabel htmlFor="pet-name">
+                  {formData.postType === 'missing' ? 'Pet Name *' : 'Pet Name (Optional)'}
+                </FieldLabel>
                 <Input
-                  id="cat-name"
-                  placeholder="e.g., Whiskers, Luna, Tuna..."
+                  id="pet-name"
+                  placeholder={formData.petType === "dog" ? "e.g., Max, Bella, Buddy..." : formData.petType === "other" ? "e.g., Birdy, Rabbit..." : "e.g., Whiskers, Luna, Tuna..."}
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   required={formData.postType === 'missing'}
+                  className={errors.name ? "border-red-500 border-2" : ""}
                 />
+                {errors.name && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
               </Field>
 
               {/* Color and Gender Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field>
-                  <FieldLabel htmlFor="cat-color">Color *</FieldLabel>
+                  <FieldLabel htmlFor="pet-color">Color/Coat Color *</FieldLabel>
                   <Select
                     value={formData.color}
                     onValueChange={(value) => handleInputChange("color", value)}
                     required
                   >
-                    <SelectTrigger id="cat-color">
+                    <SelectTrigger 
+                      id="pet-color"
+                      className={errors.color ? "border-red-500 border-2" : ""}
+                    >
                       <SelectValue placeholder="Select color" />
                     </SelectTrigger>
+                {errors.color && (
+                  <p className="text-red-500 text-sm mt-1">{errors.color}</p>
+                )}
                     <SelectContent>
                       <SelectItem value="black">Black</SelectItem>
                       <SelectItem value="white">White</SelectItem>
                       <SelectItem value="orange">Orange</SelectItem>
                       <SelectItem value="brown">Brown</SelectItem>
                       <SelectItem value="mixed">Mixed</SelectItem>
-                      <SelectItem value="others">Others</SelectItem>
-                    </SelectContent>
+                    <SelectItem value="others">Others</SelectItem>
+                  </SelectContent>
                   </Select>
+                  {errors.color && (
+                    <p className="text-red-500 text-sm mt-1">{errors.color}</p>
+                  )}
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="cat-gender">Gender *</FieldLabel>
@@ -338,37 +452,74 @@ const CreatePostForm = () => {
                     onValueChange={(value) => handleInputChange("gender", value)}
                     required
                   >
-                    <SelectTrigger id="cat-gender">
+                    <SelectTrigger 
+                      id="cat-gender"
+                      className={errors.gender ? "border-red-500 border-2" : ""}
+                    >
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
+                {errors.gender && (
+                  <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
+                )}
                     <SelectContent>
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="unknown">Unknown</SelectItem>
-                    </SelectContent>
+                    <SelectItem value="unknown">Unknown</SelectItem>
+                  </SelectContent>
                   </Select>
+                  {errors.gender && (
+                    <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
+                  )}
                 </Field>
               </div>
 
               {/* Age */}
               <Field>
-                <FieldLabel htmlFor="cat-age">Age *</FieldLabel>
+                <FieldLabel htmlFor="pet-age">Age *</FieldLabel>
                 <Select
                   value={formData.age}
                   onValueChange={(value) => handleInputChange("age", value)}
                   required
                 >
-                  <SelectTrigger id="cat-age">
+                  <SelectTrigger 
+                    id="pet-age"
+                    className={errors.age ? "border-red-500 border-2" : ""}
+                  >
                     <SelectValue placeholder="Select age range" />
                   </SelectTrigger>
+                {errors.age && (
+                  <p className="text-red-500 text-sm mt-1">{errors.age}</p>
+                )}
                   <SelectContent>
-                    <SelectItem value="kitten">Kitten (0-1 year)</SelectItem>
-                    <SelectItem value="young">Young (1-3 years)</SelectItem>
-                    <SelectItem value="adult">Adult (3-7 years)</SelectItem>
-                    <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                    {formData.petType === "cat" && (
+                      <>
+                        <SelectItem value="kitten">Kitten (0-1 year)</SelectItem>
+                        <SelectItem value="young">Young (1-3 years)</SelectItem>
+                        <SelectItem value="adult">Adult (3-7 years)</SelectItem>
+                        <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                      </>
+                    )}
+                    {formData.petType === "dog" && (
+                      <>
+                        <SelectItem value="puppy">Puppy (0-1 year)</SelectItem>
+                        <SelectItem value="young">Young (1-3 years)</SelectItem>
+                        <SelectItem value="adult">Adult (3-7 years)</SelectItem>
+                        <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                      </>
+                    )}
+                    {formData.petType === "other" && (
+                      <>
+                        <SelectItem value="young">Young</SelectItem>
+                        <SelectItem value="adult">Adult</SelectItem>
+                        <SelectItem value="senior">Senior</SelectItem>
+                      </>
+                    )}
                     <SelectItem value="unknown">Unknown</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.age && (
+                  <p className="text-red-500 text-sm mt-1">{errors.age}</p>
+                )}
               </Field>
 
               {/* Missing Date */}
@@ -425,7 +576,17 @@ const CreatePostForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field className="md:col-span-3">
                   <FieldLabel htmlFor="location">Location/Area *</FieldLabel>
-                   
+                  <Input
+                    id="location"
+                    placeholder="e.g., Downtown, Park Street, Near Central Station..."
+                    value={formData.location}
+                    onChange={(e) => handleInputChange("location", e.target.value)}
+                    required
+                    className={errors.location ? "border-red-500 border-2" : ""}
+                  />
+                  {errors.location && (
+                    <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                  )}
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="latitude">Latitude *</FieldLabel>
@@ -469,13 +630,16 @@ const CreatePostForm = () => {
                   value={formData.description}
                   onChange={(e) => handleInputChange("description", e.target.value)}
                   rows={4}
-                  className="resize-none"
+                  className={`resize-none ${errors.description ? "border-red-500 border-2" : ""}`}
                 />
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
               </Field>
 
               {/* Image Upload */}
               <Field>
-                <FieldLabel htmlFor="image">Photo *</FieldLabel>
+                <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
                 <Input
                   id="image"
                   type="file"
@@ -484,11 +648,15 @@ const CreatePostForm = () => {
                     const file = e.target.files?.[0] || null;
                     handleInputChange("image", file);
                   }}
-                  required
                 />
                 {formData.image && (
                   <p className="text-sm text-gray-600 mt-1">
                     Selected: {formData.image.name}
+                  </p>
+                )}
+                {!formData.image && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No photo selected. A default image will be used based on pet type.
                   </p>
                 )}
               </Field>
@@ -500,20 +668,24 @@ const CreatePostForm = () => {
 
               {/* Description */}
               <Field>
-                <FieldLabel htmlFor="description">Whats on your mind?</FieldLabel>
+                <FieldLabel htmlFor="description">Whats on your mind? *</FieldLabel>
                 <Textarea
                   id="description"
                   placeholder="write caption here..."
                   value={formData.description}
                   onChange={(e) => handleInputChange("description", e.target.value)}
                   rows={4}
-                  className="resize-none"
+                  className={`resize-none ${errors.description ? "border-red-500 border-2" : ""}`}
+                  required
                 />
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
               </Field>
 
               {/* Image Upload */}
               <Field>
-                <FieldLabel htmlFor="image">Photo *</FieldLabel>
+                <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
                 <Input
                   id="image"
                   type="file"
@@ -522,11 +694,15 @@ const CreatePostForm = () => {
                     const file = e.target.files?.[0] || null;
                     handleInputChange("image", file);
                   }}
-                  required
                 />
                 {formData.image && (
                   <p className="text-sm text-gray-600 mt-1">
                     Selected: {formData.image.name}
+                  </p>
+                )}
+                {!formData.image && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No photo selected. A default image will be used.
                   </p>
                 )}
               </Field>

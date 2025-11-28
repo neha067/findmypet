@@ -18,7 +18,8 @@ import {
 interface Post {
   id: string;
   title?: string;
-  type?: "missing" | "found";
+  type?: "missing" | "found" | "adoption" | "social";
+  petType?: "cat" | "dog" | "other";
   catId?: string;
   likes?: number;
   likeCount?: number;
@@ -30,12 +31,14 @@ interface Post {
 interface FilterState {
   missingCatCheck: boolean;
   foundCatCheck: boolean;
+  petTypeFilter: "cat" | "dog" | "other" | null;
   colorFilter: string | null;
   ageFilter: string | null;
 }
 
-interface CatData {
+interface PetData {
   id: string;
+  petType?: "cat" | "dog" | "other";
   color?: string;
   age?: string;
   status?: string;
@@ -43,7 +46,7 @@ interface CatData {
 
 interface SocialProps {
   filterState?: FilterState;
-  catData?: CatData[];
+  catData?: PetData[];
 }
 
 const Social = ({ filterState, catData = [] }: SocialProps) => {
@@ -58,17 +61,47 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
     }
 
     return posts.filter((post) => {
-      // Filter by type (missing/found)
+      // Filter by pet type first (if filter is active)
+      if (filterState.petTypeFilter) {
+        // Get petType from post or linked cat
+        let postPetType: string | undefined = post.petType;
+        
+        // If post doesn't have petType but has catId, get it from cat data
+        if (!postPetType && post.catId && catData.length > 0) {
+          const cat = catData.find((c) => c.id === post.catId);
+          postPetType = cat?.petType;
+        }
+        
+        // Default to "cat" for backward compatibility if no petType found
+        const normalizedPostPetType = String(postPetType || "cat").toLowerCase().trim();
+        const normalizedFilterPetType = String(filterState.petTypeFilter).toLowerCase().trim();
+        
+        if (normalizedPostPetType !== normalizedFilterPetType) {
+          return false;
+        }
+      }
+
+      // Filter by type (missing/found/adoption/social)
+      // Social posts are always shown if no filters are active or if filters allow it
       const typeMatches = 
         (filterState.missingCatCheck && post.type === "missing") ||
-        (filterState.foundCatCheck && post.type === "found");
+        (filterState.foundCatCheck && post.type === "found") ||
+        (post.type === "adoption") || // Adoption posts shown if any filter is active
+        (post.type === "social"); // Social posts shown if any filter is active
 
+      // If both checkboxes are unchecked, only show adoption and social posts
       if (!filterState.missingCatCheck && !filterState.foundCatCheck) {
-        return false;
+        // Only show adoption and social posts when no status filters are active
+        return post.type === "adoption" || post.type === "social";
       }
 
       if (!typeMatches) {
         return false;
+      }
+
+      // Social posts don't have catId, so skip cat-based filtering for them
+      if (post.type === "social") {
+        return true; // Social posts pass through without cat-based filtering
       }
 
       // Filter by color/age if post has catId and we have cat data
@@ -189,21 +222,26 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                 </div>
               ) : filteredPosts.length > 0 ? (
                 <>
-                  {filterState && (filterState.missingCatCheck !== true || filterState.foundCatCheck !== true || filterState.colorFilter || filterState.ageFilter) && (
+                  {filterState && (filterState.missingCatCheck !== true || filterState.foundCatCheck !== true || filterState.petTypeFilter || filterState.colorFilter || filterState.ageFilter) && (
                     <div className="w-full mb-2 px-3 py-2 bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 rounded-lg text-sm">
                       <span className="text-violet-800 dark:text-violet-200">
                         🔍 Showing {filteredPosts.length} of {posts.length} posts
                       </span>
                     </div>
                   )}
-                  {filteredPosts.map((p) => (
-                  <PostCard 
-                    key={p.id} 
-                    postId={p.id} 
-                    title={p.title || "Untitled Post"}
-                    imageUrl={p.imageUrl || "/assets/test1.jpeg"}
-                  />
-                  ))}
+                  {filteredPosts.map((p) => {
+                    // Find petType from linked cat if not in post
+                    const petType = p.petType || (p.catId && catData.find((c) => c.id === p.catId)?.petType);
+                    return (
+                      <PostCard 
+                        key={p.id} 
+                        postId={p.id} 
+                        title={p.title || "Untitled Post"}
+                        imageUrl={p.imageUrl}
+                        petType={petType}
+                      />
+                    );
+                  })}
                 </>
               ) : (
                 <div className="text-center py-12">
@@ -211,7 +249,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                     No posts yet.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
-                    Report a missing or found cat to start the timeline!
+                    Report a missing or found pet to start the timeline!
                   </p>
                 </div>
               )}

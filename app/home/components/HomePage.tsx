@@ -15,8 +15,9 @@ const MapView = dynamic(() => import("../../../components/ui/MapView"), {
   ssr: false,
 });
 
-interface CatData {
+interface PetData {
   id: string;
+  petType?: "cat" | "dog" | "other";
   name?: string;
   status: string;
   daysAgo?: number;
@@ -32,8 +33,8 @@ interface CatData {
 
 export default function HomePage() {
   const [showsidebar, setShowsidebar] = useState(false);
-  const [catData, setCatData] = useState<CatData[]>([]);
-  const [filteredData, setFilteredData] = useState<CatData[]>([]);
+  const [petData, setPetData] = useState<PetData[]>([]);
+  const [filteredData, setFilteredData] = useState<PetData[]>([]);
   const [map_center, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
   const [tabValue, setTabValue] = useState('home');
   const [loading, setLoading] = useState(true);
@@ -44,11 +45,12 @@ export default function HomePage() {
   const [filterState, setFilterState] = useState({
     missingCatCheck: true,
     foundCatCheck: true,
+    petTypeFilter: null as "cat" | "dog" | "other" | null,
     colorFilter: null as string | null,
     ageFilter: null as string | null,
   });
 
-  // Fetch cats from Firestore in real-time
+  // Fetch pets from Firestore in real-time
   useEffect(() => {
     // Only run on client side
     if (typeof window === "undefined") return;
@@ -68,7 +70,7 @@ export default function HomePage() {
         q,
         (snapshot) => {
           try {
-            const cats: CatData[] = snapshot.docs.map((doc) => {
+            const pets: PetData[] = snapshot.docs.map((doc) => {
               const data = doc.data();
               const position: [number, number] = data.position || 
                 (data.latitude && data.longitude 
@@ -77,6 +79,7 @@ export default function HomePage() {
 
               return {
                 id: doc.id,
+                petType: data.petType || "cat", // Default to cat for backward compatibility
                 name: data.name || "Unknown",
                 status: data.status || "Unknown",
                 daysAgo: data.daysAgo || 0,
@@ -91,28 +94,28 @@ export default function HomePage() {
               };
             });
 
-            setCatData(cats);
+            setPetData(pets);
             // Always update filteredData when new data arrives
             // The FilterSideBar will handle reapplying filters if needed
-            setFilteredData(cats);
+            setFilteredData(pets);
             setLoading(false);
 
-            // Update map center based on cat positions if available
-            if (cats.length > 0) {
-              const avgLat = cats.reduce((sum, cat) => sum + cat.position[0], 0) / cats.length;
-              const avgLng = cats.reduce((sum, cat) => sum + cat.position[1], 0) / cats.length;
+            // Update map center based on pet positions if available
+            if (pets.length > 0) {
+              const avgLat = pets.reduce((sum, pet) => sum + pet.position[0], 0) / pets.length;
+              const avgLng = pets.reduce((sum, pet) => sum + pet.position[1], 0) / pets.length;
               setMapCenter([avgLat, avgLng]);
             }
           } catch (error) {
-            console.error("Error processing cats data:", error);
+            console.error("Error processing pets data:", error);
             setLoading(false);
           }
         },
         (error) => {
-          console.error("Error fetching cats:", error);
+          console.error("Error fetching pets:", error);
           setLoading(false);
           // Set empty data on error
-          setCatData([]);
+          setPetData([]);
           setFilteredData([]);
         }
       );
@@ -124,19 +127,19 @@ export default function HomePage() {
     }
   }, []);
 
-  const filterCatData = (data: CatData[]) => {
-    console.log("📊 filterCatData called:", {
+  const filterPetData = (data: PetData[]) => {
+    console.log("📊 filterPetData called:", {
       filteredCount: data.length,
-      totalCount: catData.length,
+      totalCount: petData.length,
       filteredIds: data.map(d => d.id).sort(),
-      totalIds: catData.map(d => d.id).sort()
+      totalIds: petData.map(d => d.id).sort()
     });
     setFilteredData(data);
     // Mark that filters are active if filtering results in different data
-    const isDifferent = data.length !== catData.length || 
-      JSON.stringify(data.map(d => d.id).sort()) !== JSON.stringify(catData.map(d => d.id).sort());
+    const isDifferent = data.length !== petData.length || 
+      JSON.stringify(data.map(d => d.id).sort()) !== JSON.stringify(petData.map(d => d.id).sort());
     setHasActiveFilters(isDifferent);
-    console.log("🎯 Filters active:", isDifferent, "| Showing", data.length, "of", catData.length, "cats");
+    console.log("🎯 Filters active:", isDifferent, "| Showing", data.length, "of", petData.length, "pets");
   };
 
   const toggleHideSidebar = () => {
@@ -159,9 +162,9 @@ export default function HomePage() {
         {/* Filter Sidebar */}
         <div className={`${showsidebar ? "block" : "hidden"} md:block`}>
           <FilterSideBar
-            catData={catData}
+            catData={petData}
             map_center={map_center}
-            filterCatData={filterCatData}
+            filterCatData={filterPetData}
             toggleHideSidebar={toggleHideSidebar}
             changeTabValue={changeTabValue}
             curTab={tabValue}
@@ -173,9 +176,9 @@ export default function HomePage() {
         {/* Collapsed Sidebar */}
         <div className={`group ${showsidebar ? "hidden" : "block"} md:hidden`}>
           <SideBar 
-            catData={catData}
+            catData={petData}
             map_center={map_center}
-            filterCatData={filterCatData}
+            filterCatData={filterPetData}
             toggleHideSidebar={toggleHideSidebar}
           />
         </div>
@@ -198,7 +201,7 @@ export default function HomePage() {
                       Map Explorer
                     </h1>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Tap a marker to see details about a missing or found cat.
+                      Tap a marker to see details about a missing or found pet.
                     </p>
                   </div>
                 </div>
@@ -213,9 +216,9 @@ export default function HomePage() {
                   <>
                     {hasActiveFilters && (
                       <div className="mb-2 px-3 py-2 bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 rounded-lg text-sm">
-                        <span className="text-violet-800 dark:text-violet-200">
-                          🔍 Showing {filteredData.length} of {catData.length} cats
-                        </span>
+                      <span className="text-violet-800 dark:text-violet-200">
+                        🔍 Showing {filteredData.length} of {petData.length} pets
+                      </span>
                       </div>
                     )}
                     <MapView map_center={map_center} catData={filteredData} />
@@ -236,7 +239,7 @@ export default function HomePage() {
                     Social Feed
                   </h1>
                 </div>
-                <Social filterState={filterState} catData={catData} />
+                <Social filterState={filterState} catData={petData} />
               </div>
             )}
           </div>
