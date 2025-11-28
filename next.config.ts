@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
         hostname: '**.firebaseapp.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
     ],
   },
 };
