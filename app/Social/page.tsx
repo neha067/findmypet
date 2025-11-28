@@ -7,6 +7,7 @@ import PostCard from "@/components/PostCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CreatePostForm from "./components/CreatePostForm";
 import FoundForm from "./components/FoundForm";
+import { Button } from "@/components/ui/button";
 import {
   Tabs,
   TabsContent,
@@ -48,7 +49,7 @@ interface SocialProps {
 const Social = ({ filterState, catData = [] }: SocialProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("account");
+  const [activeTab, setActiveTab] = useState("timeline");
   
   // Filter posts when filterState or posts change
   const filteredPosts = (() => {
@@ -155,30 +156,31 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
   return (
     <div className="w-full max-w-5xl mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="account">Timeline</TabsTrigger>
-          <TabsTrigger value="missing">Report Missing</TabsTrigger>
-          <TabsTrigger value="found">Report Found</TabsTrigger>
+        <TabsList className="grid w-[50%] grid-cols-3 ">
+          <TabsTrigger value="timeline" className="cursor-pointer">Timeline</TabsTrigger>
+          <TabsTrigger value="create" className="cursor-pointer">Create a Post</TabsTrigger>
+          {/* <TabsTrigger value="found">Report Found</TabsTrigger> */}
         </TabsList>
         
-        <TabsContent value="account" className="mt-4">
+        <TabsContent value="timeline" className="mt-4">
           {/* Quick Create Post Buttons */}
           <div className="mb-4 flex gap-2 flex-wrap">
-            <button
-              onClick={() => setActiveTab("missing")}
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors text-sm font-medium"
+            <Button
+              onClick={() => setActiveTab("create")}
+              className="border justify-end border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 dark:active:bg-slate-600 text-slate-900 dark:text-slate-100 rounded-lg transition-colors text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+              // className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors text-sm font-medium"
             >
-              🐱 Report Missing Cat
-            </button>
-            <button
+              🐱 Create a Post
+            </Button>
+            {/* <button
               onClick={() => setActiveTab("found")}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
             >
               ✅ Report Found Cat
-            </button>
+            </button> */}
           </div>
           
-          <ScrollArea className="h-[calc(100vh-16rem)] w-full rounded-md border dark:border-slate-700 p-4">
+          <ScrollArea className="h-[calc(100vh-13rem)] w-full rounded-md border dark:border-slate-700 p-4">
             <div className="w-full flex flex-col items-center gap-4">
               {loading ? (
                 <div className="flex flex-col items-center gap-3 py-8">
@@ -199,7 +201,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                     key={p.id} 
                     postId={p.id} 
                     title={p.title || "Untitled Post"}
-                    imageUrl={p.imageUrl}
+                    imageUrl={p.imageUrl || "/assets/test1.jpeg"}
                   />
                   ))}
                 </>
@@ -217,7 +219,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
           </ScrollArea>
         </TabsContent>
         
-        <TabsContent value="missing" className="mt-4">
+        <TabsContent value="create" className="mt-4">
           <CreatePostForm />
         </TabsContent>
         

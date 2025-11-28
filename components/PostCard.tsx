@@ -217,7 +217,7 @@ export default function PostCard({ postId, title, imageUrl, createdAt }: PostCar
             src={displayImage} 
             alt={displayTitle}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 100vw, 400px"
           />
         </div>

@@ -51,15 +51,15 @@ export default function LoginPage() {
         <div className="h-full w-full bg-[url('/assets/homeleft.png')] bg-cover bg-center bg-no-repeat relative">
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 to-purple-600/20"></div>
           <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-40 h-40 rounded-3xl bg-violet-200 dark:bg-violet-800 flex items-center justify-center mb-6">
+            {/* <div className="w-40 h-40 rounded-3xl bg-violet-200 dark:bg-violet-800 flex items-center justify-center mb-6">
               <span className="text-6xl">🐱</span>
-            </div>
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-              Helping lost pets find their way home.
-            </h1>
-            <p className="text-lg text-slate-700 dark:text-slate-300 max-w-md">
-              Track missing cats on a live map and connect with the people who find them.
-            </p>
+            </div> */}
+              {/* <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+                Helping lost pets find their way home.
+              </h1>
+              <p className="text-lg text-slate-700 dark:text-slate-300 max-w-md">
+                Track missing cats on a live map and connect with the people who find them.
+              </p> */}
           </div>
         </div>
       </div>
@@ -67,13 +67,13 @@ export default function LoginPage() {
       {/* Right login panel */}
       <div className="flex flex-1 items-center justify-center px-4 py-6">
         <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 p-8 shadow-lg border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-4 mb-2">
+          <div className="grid grid-cols-2 gap-4 mb-2">
             <Image 
               src="/assets/logobrand.png" 
               height={40} 
               width={100} 
               alt="logo"
-              style={{ width: 'auto', height: '40px' }}
+              style={{ width: 'auto', height: '100px' }}
             />
             <Image 
               src="/assets/loginH1.png" 

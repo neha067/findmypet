@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -24,10 +24,16 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import type { LatLngTuple } from "leaflet";
+const MapView = dynamic(() => import("./MapView"), {
+  ssr: false,
+});
 
 const CreatePostForm = () => {
   const { user } = useAuth();
   const router = useRouter();
+  // const map_center: LatLngTuple = [12.9716, 77.5946];
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -42,11 +48,24 @@ const CreatePostForm = () => {
     missingYear: "",
     missingDate: "",
     image: null as File | null,
+    postType: ""
   });
 
   const handleInputChange = (field: string, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+  const [map_center, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
+
+  const updateMapCenter = (data: [number, number]) => {
+    setMapCenter(data);
+    handleInputChange("latitude", String(data[0]))
+    handleInputChange("longitude", String(data[1]))
+  };
+
+  useEffect(() => {
+    console.log('mapc',map_center);
+    
+  },[map_center])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +152,7 @@ const CreatePostForm = () => {
         gender: formData.gender || "unknown",
         age: formData.age || "unknown",
         description: formData.description,
-        status: "Missing",
+        status: formData.postType,
         location: formData.location,
         position: [lat, lng],
         latitude: lat,
@@ -199,6 +218,7 @@ const CreatePostForm = () => {
         missingYear: "",
         missingDate: "",
         image: null,
+        postType:""
       });
 
       // Clear timeout since submission succeeded
@@ -236,26 +256,56 @@ const CreatePostForm = () => {
     { value: "12", label: "December" },
   ];
 
+  useEffect(()   => {
+    console.log('form',formData);
+    
+  },[formData,formData?.latitude])
+
   return (
     <div className="w-full max-w-2xl mx-auto p-4">
       <form onSubmit={handleSubmit}>
         <FieldGroup>
           <FieldSet>
-            <FieldLegend className="text-xl font-bold">Report a Missing Cat</FieldLegend>
+            <FieldLegend className="text-xl font-bold">Create a Post</FieldLegend>
             <FieldDescription>
-              Fill in the details below to report a missing cat. This will appear on the map and social feed.
+              Fill in the details below to report a missing/found pet or just for fun. Missing/found cats will appear on the map and social feed.
             </FieldDescription>
             
             <FieldGroup className="mt-4 space-y-4">
+              {/*cat status */}
+               <Field>
+                <FieldLabel htmlFor="cat-name">Post type *</FieldLabel>
+                 <Select
+                    value={formData.postType}
+                    onValueChange={(value) => handleInputChange("postType", value)}
+                    required
+                  >
+                    <SelectTrigger id="cat-color">
+                      <SelectValue placeholder="Select type of post" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="missing">Missing</SelectItem>
+                      <SelectItem value="found">Found</SelectItem>
+                       <SelectItem value="adoption">Adoption</SelectItem>
+                      <SelectItem value="social">Just for fun</SelectItem>
+                    </SelectContent>
+                  </Select>
+              </Field>
+
+              {formData.postType !== 'social' ? 
+
+              <>
+
               {/* Cat Name */}
               <Field>
-                <FieldLabel htmlFor="cat-name">Cat Name *</FieldLabel>
+                <FieldLabel htmlFor="cat-name">{formData.postType === 'missing' ?
+                'Cat Name*' :'Cat Name'}</FieldLabel>
                 <Input
                   id="cat-name"
                   placeholder="e.g., Whiskers, Luna, Tuna..."
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  required
+                  required={formData.postType === 'missing'}
                 />
               </Field>
 
@@ -282,10 +332,11 @@ const CreatePostForm = () => {
                   </Select>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="cat-gender">Gender</FieldLabel>
+                  <FieldLabel htmlFor="cat-gender">Gender *</FieldLabel>
                   <Select
                     value={formData.gender}
                     onValueChange={(value) => handleInputChange("gender", value)}
+                    required
                   >
                     <SelectTrigger id="cat-gender">
                       <SelectValue placeholder="Select gender" />
@@ -301,10 +352,11 @@ const CreatePostForm = () => {
 
               {/* Age */}
               <Field>
-                <FieldLabel htmlFor="cat-age">Age</FieldLabel>
+                <FieldLabel htmlFor="cat-age">Age *</FieldLabel>
                 <Select
                   value={formData.age}
                   onValueChange={(value) => handleInputChange("age", value)}
+                  required
                 >
                   <SelectTrigger id="cat-age">
                     <SelectValue placeholder="Select age range" />
@@ -322,7 +374,8 @@ const CreatePostForm = () => {
               {/* Missing Date */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field>
-                  <FieldLabel>Missing Date (Optional)</FieldLabel>
+                  <FieldLabel>{formData.postType === 'missing' ? 'Missing Date *' :
+                  'Found Date *'} </FieldLabel>
                   <Input
                     type="date"
                     value={formData.missingDate}
@@ -330,7 +383,7 @@ const CreatePostForm = () => {
                     max={new Date().toISOString().split("T")[0]}
                   />
                 </Field>
-                <Field>
+                {/* <Field>
                   <FieldLabel>Or select month</FieldLabel>
                   <Select
                     value={formData.missingMonth}
@@ -365,23 +418,17 @@ const CreatePostForm = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                </Field>
+                </Field> */}
               </div>
 
               {/* Location */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field className="md:col-span-3">
                   <FieldLabel htmlFor="location">Location/Area *</FieldLabel>
-                  <Input
-                    id="location"
-                    placeholder="e.g., Downtown, Park Street, Near Central Station..."
-                    value={formData.location}
-                    onChange={(e) => handleInputChange("location", e.target.value)}
-                    required
-                  />
+                   
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="latitude">Latitude (Optional)</FieldLabel>
+                  <FieldLabel htmlFor="latitude">Latitude *</FieldLabel>
                   <Input
                     id="latitude"
                     type="number"
@@ -389,10 +436,11 @@ const CreatePostForm = () => {
                     placeholder="12.9716"
                     value={formData.latitude}
                     onChange={(e) => handleInputChange("latitude", e.target.value)}
+                    disabled
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="longitude">Longitude (Optional)</FieldLabel>
+                  <FieldLabel htmlFor="longitude">Longitude *</FieldLabel>
                   <Input
                     id="longitude"
                     type="number"
@@ -400,9 +448,17 @@ const CreatePostForm = () => {
                     placeholder="77.5946"
                     value={formData.longitude}
                     onChange={(e) => handleInputChange("longitude", e.target.value)}
+                    disabled
                   />
                 </Field>
               </div>
+
+              <MapView 
+              map_center={map_center} 
+              updateMapCenter={updateMapCenter}
+              // catData={[]}
+              // locationForm={true}
+              />
 
               {/* Description */}
               <Field>
@@ -419,7 +475,7 @@ const CreatePostForm = () => {
 
               {/* Image Upload */}
               <Field>
-                <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
+                <FieldLabel htmlFor="image">Photo *</FieldLabel>
                 <Input
                   id="image"
                   type="file"
@@ -428,6 +484,7 @@ const CreatePostForm = () => {
                     const file = e.target.files?.[0] || null;
                     handleInputChange("image", file);
                   }}
+                  required
                 />
                 {formData.image && (
                   <p className="text-sm text-gray-600 mt-1">
@@ -435,12 +492,53 @@ const CreatePostForm = () => {
                   </p>
                 )}
               </Field>
+
+              </>
+              :
+
+              <>
+
+              {/* Description */}
+              <Field>
+                <FieldLabel htmlFor="description">Whats on your mind?</FieldLabel>
+                <Textarea
+                  id="description"
+                  placeholder="write caption here..."
+                  value={formData.description}
+                  onChange={(e) => handleInputChange("description", e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+              </Field>
+
+              {/* Image Upload */}
+              <Field>
+                <FieldLabel htmlFor="image">Photo *</FieldLabel>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    handleInputChange("image", file);
+                  }}
+                  required
+                />
+                {formData.image && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Selected: {formData.image.name}
+                  </p>
+                )}
+              </Field>
+
+              </>
+            }
             </FieldGroup>
           </FieldSet>
 
           <div className="flex gap-3 mt-6">
             <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? "Submitting..." : "Report Missing Cat"}
+              {loading ? "Submitting..." : "Post"}
             </Button>
             <Button
               type="button"

@@ -58,9 +58,9 @@ export default function Header() {
               </PopoverTrigger>
               <PopoverContent className="w-48 p-2" align="end">
                 <div className="space-y-1">
-                  <div className="px-2 py-1.5 text-sm text-slate-600 dark:text-slate-400">
+                  {/* <div className="px-2 py-1.5 text-sm text-slate-600 dark:text-slate-400">
                     {user.email}
-                  </div>
+                  </div> */}
                   <Button
                     className="w-full justify-start"
                     variant="ghost"

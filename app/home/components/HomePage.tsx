@@ -155,7 +155,7 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
       <Header />
       
-      <main className="flex flex-1 gap-0 md:gap-4 px-0 md:px-4 py-4">
+      <main className="flex h-full flex-1 gap-0 md:gap-4 px-0 md:px-4 py-4">
         {/* Filter Sidebar */}
         <div className={`${showsidebar ? "block" : "hidden"} md:block`}>
           <FilterSideBar

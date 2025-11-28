@@ -214,19 +214,19 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
     changeTabValue(tabValue)
   },[tabValue])
   return (
-    <aside className="w-full md:w-52 border-r border-slate-200 bg-slate-50/80 backdrop-blur-sm relative">
-      <div className="h-full overflow-y-auto px-2 py-3 space-y-3 pb-20">
+    <aside className="w-full md:w-52 border-r border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/80 backdrop-blur-sm relative">
+      <div className="h-full overflow-y-auto px-2 py-3 space-y-3 pb-20 text-slate-900 dark:text-slate-100">
 
         <div className="w-full flex items-start flex-col gap-2">
            <ToggleGroup className="w-full flex items-start flex-col gap-1" type="single" value={tabValue} onValueChange={setTabValue}>
             <ToggleGroupItem disabled={'home' === curTab} className="w-full justify-start px-2 py-2 text-left" value="home">
-              <span className="w-full inline-flex items-center gap-2"><House className="w-4 h-4"/> Home</span>
+              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><House className="w-4 h-4"/> Home</span>
             </ToggleGroupItem>
             <ToggleGroupItem disabled={'map' === curTab} className="w-full justify-start px-2 py-2 text-left" value="map">
-              <span className="w-full inline-flex items-center gap-2"><MapPinned className="w-4 h-4"/> Map Explorer</span>
+              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><MapPinned className="w-4 h-4"/> Map Explorer</span>
             </ToggleGroupItem>
             <ToggleGroupItem disabled={true} className="w-full justify-start px-2 py-2 text-left" value="filter">
-              <span className="w-full inline-flex items-center gap-2"><Funnel className="w-4 h-4"/> Apply Filters</span>
+              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><Funnel className="w-4 h-4"/> Apply Filters</span>
             </ToggleGroupItem>
           </ToggleGroup>
         
@@ -248,11 +248,11 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
           <FilterLabel>Status</FilterLabel>
           <div className="flex gap-1">
             <Checkbox checked={missingCatCheck} onCheckedChange={() => setMissingCatCheck(!missingCatCheck)}/>
-            <Label htmlFor="toggle">Missing Cats</Label>
+            <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Missing Cats</Label>
           </div>
           <div className="flex gap-1">
             <Checkbox checked={foundCatCheck} onCheckedChange={() => setFoundCatCheck(!foundCatCheck)}/>
-            <Label htmlFor="toggle">Found Cats</Label>
+            <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Found Cats</Label>
           </div>
         </div>
 
@@ -266,12 +266,12 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
             <ColorPill label="Orange" />
           </div> */}
           <ToggleGroup type="single" value={colorFilter} onValueChange={setColorFilterValue} className="flex flex-wrap gap-">
-            <ToggleGroupItem value="black">Black</ToggleGroupItem>
-            <ToggleGroupItem value="white">White</ToggleGroupItem>
-            <ToggleGroupItem value="mixed">Mixed</ToggleGroupItem>
-            <ToggleGroupItem value="orange">Orange</ToggleGroupItem>
-            <ToggleGroupItem value="brown">Brown</ToggleGroupItem>
-            <ToggleGroupItem value="others">Others</ToggleGroupItem>
+            <ToggleGroupItem value="black" className="dark:text-slate-200">Black</ToggleGroupItem>
+            <ToggleGroupItem value="white" className="dark:text-slate-200">White</ToggleGroupItem>
+            <ToggleGroupItem value="mixed" className="dark:text-slate-200">Mixed</ToggleGroupItem>
+            <ToggleGroupItem value="orange" className="dark:text-slate-200">Orange</ToggleGroupItem>
+            <ToggleGroupItem value="brown" className="dark:text-slate-200">Brown</ToggleGroupItem>
+            <ToggleGroupItem value="others" className="dark:text-slate-200">Others</ToggleGroupItem>
           </ToggleGroup>
         </div>
 
@@ -279,10 +279,10 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
           <FilterLabel>Age</FilterLabel>
           <div className="mt-2 space-y-2">
             <ToggleGroup type="single" value={ageFilter} onValueChange={setAgeFilterValue} className="flex flex-wrap gap-">
-            <ToggleGroupItem value="kitten">Kitten (0–1 yr)</ToggleGroupItem>
-            <ToggleGroupItem value="young">Young (1–3 yrs)</ToggleGroupItem>
-            <ToggleGroupItem value="adult">Adult (3+ yrs)</ToggleGroupItem>
-            <ToggleGroupItem value="senior">Senior (7+ yrs)</ToggleGroupItem>
+            <ToggleGroupItem value="kitten" className="dark:text-slate-200">Kitten (0–1 yr)</ToggleGroupItem>
+            <ToggleGroupItem value="young" className="dark:text-slate-200">Young (1–3 yrs)</ToggleGroupItem>
+            <ToggleGroupItem value="adult" className="dark:text-slate-200">Adult (3+ yrs)</ToggleGroupItem>
+            <ToggleGroupItem value="senior" className="dark:text-slate-200">Senior (7+ yrs)</ToggleGroupItem>
           </ToggleGroup>
           </div>
         </div>
