@@ -19,9 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 // No need to import default image functions - we use icons instead
@@ -96,7 +96,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
       return;
     }
 
-    if (!db || !storage) {
+    if (!db) {
       alert("Firebase is not initialized. Please check your configuration.");
       return;
     }
@@ -115,35 +115,11 @@ const handleInputChange = (field: string, value: string | File | null) => {
       // Upload image if provided
       if (formData.image) {
         try {
-          // Validate file size (5MB limit)
-          if (formData.image.size > 5 * 1024 * 1024) {
-            throw new Error("Image size exceeds 5MB limit. Please use a smaller image.");
-          }
-          
-          // Validate file type
-          if (!formData.image.type.startsWith('image/')) {
-            throw new Error("Invalid file type. Please upload an image file.");
-          }
-          
-          const imageRef = ref(storage, `cats/${Date.now()}_${formData.image.name}`);
-          await uploadBytes(imageRef, formData.image);
-          imageUrl = await getDownloadURL(imageRef);
+          // Upload to Cloudinary
+          imageUrl = await uploadImageToCloudinary(formData.image, 'pets');
         } catch (imageError: any) {
           console.error("Image upload error:", imageError);
-          
-          // Provide specific error messages for common issues
-          let errorMessage = "Failed to upload image. ";
-          if (imageError.code === 'storage/unauthorized') {
-            errorMessage += "You don't have permission to upload. Please check Firebase Storage rules.";
-          } else if (imageError.code === 'storage/quota-exceeded') {
-            errorMessage += "Storage quota exceeded. Please contact support.";
-          } else if (imageError.message?.includes('CORS') || imageError.message?.includes('cors')) {
-            errorMessage += "CORS error detected. Please configure Firebase Storage CORS settings (see FIREBASE_STORAGE_SETUP.md).";
-          } else {
-            errorMessage += imageError.message || "Please try a smaller image or check your connection.";
-          }
-          
-          throw new Error(errorMessage);
+          throw new Error(imageError.message || "Failed to upload image. Please try again.");
         }
       }
       
