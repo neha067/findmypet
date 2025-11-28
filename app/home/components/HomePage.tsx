@@ -35,20 +35,25 @@ export default function HomePage() {
   const [showsidebar, setShowsidebar] = useState(false);
   const [petData, setPetData] = useState<PetData[]>([]);
   const [filteredData, setFilteredData] = useState<PetData[]>([]);
-  const [map_center, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
   const [tabValue, setTabValue] = useState('home');
   const [loading, setLoading] = useState(true);
   const [activeFilterState, setActiveFilterState] = useState(null);
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
-  
+
   // Filter state - lifted to parent to share with Social component
   const [filterState, setFilterState] = useState({
     missingCatCheck: true,
     foundCatCheck: true,
+    adoptionCheck: true,
     petTypeFilter: null as "cat" | "dog" | "other" | null,
     colorFilter: null as string | null,
     ageFilter: null as string | null,
   });
+
+  const updateMapCenter = (center: [number, number]) => {
+    setMapCenter(center);
+  };
 
   // Fetch pets from Firestore in real-time
   useEffect(() => {
@@ -72,9 +77,9 @@ export default function HomePage() {
           try {
             const pets: PetData[] = snapshot.docs.map((doc) => {
               const data = doc.data();
-              const position: [number, number] = data.position || 
-                (data.latitude && data.longitude 
-                  ? [data.latitude, data.longitude] 
+              const position: [number, number] = data.position ||
+                (data.latitude && data.longitude
+                  ? [data.latitude, data.longitude]
                   : [12.9716, 77.5946]);
 
               return {
@@ -82,6 +87,7 @@ export default function HomePage() {
                 petType: data.petType || "cat", // Default to cat for backward compatibility
                 name: data.name || "Unknown",
                 status: data.status || "Unknown",
+                type: data.type,
                 daysAgo: data.daysAgo || 0,
                 position: position,
                 color: data.color,
@@ -136,7 +142,7 @@ export default function HomePage() {
     });
     setFilteredData(data);
     // Mark that filters are active if filtering results in different data
-    const isDifferent = data.length !== petData.length || 
+    const isDifferent = data.length !== petData.length ||
       JSON.stringify(data.map(d => d.id).sort()) !== JSON.stringify(petData.map(d => d.id).sort());
     setHasActiveFilters(isDifferent);
     console.log("🎯 Filters active:", isDifferent, "| Showing", data.length, "of", petData.length, "pets");
@@ -155,15 +161,15 @@ export default function HomePage() {
   }, [tabValue]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
       <Header />
-      
+
       <main className="flex h-full flex-1 gap-0 md:gap-4 px-0 md:px-4 py-4">
         {/* Filter Sidebar */}
-        <div className={`${showsidebar ? "block" : "hidden"} md:block`}>
+        <div className={`${showsidebar ? "block" : "hidden"} md:block bg-white dark:bg-slate-800 rounded-lg overflow-y-auto`}>
           <FilterSideBar
             catData={petData}
-            map_center={map_center}
+            map_center={mapCenter}
             filterCatData={filterPetData}
             toggleHideSidebar={toggleHideSidebar}
             changeTabValue={changeTabValue}
@@ -172,21 +178,24 @@ export default function HomePage() {
             setFilterState={setFilterState}
           />
         </div>
-        
+
         {/* Collapsed Sidebar */}
         <div className={`group ${showsidebar ? "hidden" : "block"} md:hidden`}>
-          <SideBar 
+          <SideBar
             catData={petData}
-            map_center={map_center}
+            map_center={mapCenter}
             filterCatData={filterPetData}
             toggleHideSidebar={toggleHideSidebar}
+            changeTabValue={changeTabValue}
+            curTab={tabValue}
+            setShowsidebar={setShowsidebar}
           />
         </div>
 
         <section className="flex-1 px-4 md:px-0">
           <div className="h-[calc(100vh-6rem-2rem)] flex flex-col gap-2">
             {tabValue === 'map' ? (
-              <div className="flex-1 gap-2">
+              <div className="flex-1 gap-2 bg-white dark:bg-slate-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Button
                     variant="ghost"
@@ -216,17 +225,17 @@ export default function HomePage() {
                   <>
                     {hasActiveFilters && (
                       <div className="mb-2 px-3 py-2 bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 rounded-lg text-sm">
-                      <span className="text-violet-800 dark:text-violet-200">
-                        🔍 Showing {filteredData.length} of {petData.length} pets
-                      </span>
+                        <span className="text-violet-800 dark:text-violet-200">
+                          🔍 Showing {filteredData.length} of {petData.length} pets
+                        </span>
                       </div>
                     )}
-                    <MapView map_center={map_center} catData={filteredData} />
+                    <MapView map_center={mapCenter} catData={filteredData} updateMapCenter={updateMapCenter} />
                   </>
                 )}
               </div>
             ) : (
-              <div className="flex-1">
+              <div className="flex-1 bg-white dark:bg-slate-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-4 md:hidden">
                   <Button
                     variant="ghost"

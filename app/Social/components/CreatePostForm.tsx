@@ -65,7 +65,7 @@ const CreatePostForm = () => {
       });
     }
   };
-  const [map_center, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
 
   const updateMapCenter = (data: [number, number]) => {
     setMapCenter(data);
@@ -74,9 +74,9 @@ const CreatePostForm = () => {
   };
 
   useEffect(() => {
-    console.log('mapc',map_center);
-    
-  },[map_center])
+    console.log('mapc', mapCenter);
+
+  }, [mapCenter])
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -147,7 +147,7 @@ const CreatePostForm = () => {
     }
 
     setLoading(true);
-    
+
     // Safety timeout - reset loading state after 30 seconds if something goes wrong
     const timeoutId = setTimeout(() => {
       setLoading(false);
@@ -167,16 +167,16 @@ const CreatePostForm = () => {
           throw new Error(imageError.message || "Failed to upload image. Please try again.");
         }
       }
-      
+
       // If no image uploaded, imageUrl will remain empty
       // This will trigger icon display in PostCard instead of an image
 
       // Calculate missing date
-      const missingDateObj = formData.missingDate 
+      const missingDateObj = formData.missingDate
         ? new Date(formData.missingDate)
         : formData.missingMonth && formData.missingYear
-        ? new Date(parseInt(formData.missingYear), parseInt(formData.missingMonth) - 1, 1)
-        : new Date();
+          ? new Date(parseInt(formData.missingYear), parseInt(formData.missingMonth) - 1, 1)
+          : new Date();
 
       // Get user's location if not provided (or use default Bangalore coordinates)
       const lat = formData.latitude ? parseFloat(formData.latitude) : 12.9716;
@@ -187,31 +187,32 @@ const CreatePostForm = () => {
       try {
         const petsRef = collection(db, "pets");
         petDocRef = await addDoc(petsRef, {
-        petType: formData.petType,
-        name: formData.name,
-        color: formData.color,
-        gender: formData.gender || "unknown",
-        age: formData.age || "unknown",
-        description: formData.description,
-        status: formData.postType,
-        location: formData.location,
-        position: [lat, lng],
-        latitude: lat,
-        longitude: lng,
-        missingDate: missingDateObj,
-        missingMonth: formData.missingMonth,
-        missingYear: formData.missingYear,
-        imageUrl: imageUrl,
-        reportedBy: {
-          uid: user.uid,
-          name: user.displayName || "Anonymous",
-          email: user.email || "",
-          photo: user.photoURL || null,
-        },
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        likeCount: 0,
-        daysAgo: Math.floor((Date.now() - missingDateObj.getTime()) / (1000 * 60 * 60 * 24)),
+          petType: formData.petType,
+          name: formData.name,
+          color: formData.color,
+          gender: formData.gender || "unknown",
+          age: formData.age || "unknown",
+          description: formData.description,
+          status: formData.postType,
+          type: formData.postType,
+          location: formData.location,
+          position: [lat, lng],
+          latitude: lat,
+          longitude: lng,
+          missingDate: missingDateObj,
+          missingMonth: formData.missingMonth,
+          missingYear: formData.missingYear,
+          imageUrl: imageUrl,
+          reportedBy: {
+            uid: user.uid,
+            name: user.displayName || "Anonymous",
+            email: user.email || "",
+            photo: user.photoURL || null,
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          likeCount: 0,
+          daysAgo: Math.floor((Date.now() - missingDateObj.getTime()) / (1000 * 60 * 60 * 24)),
         });
       } catch (firestoreError: any) {
         console.error("Error saving to cats collection:", firestoreError);
@@ -222,20 +223,20 @@ const CreatePostForm = () => {
       try {
         const postsRef = collection(db, "posts");
         await addDoc(postsRef, {
-        title: `Missing: ${formData.name}`,
-        type: "missing",
-        petType: formData.petType,
-        catId: petDocRef.id,
-        description: formData.description || `Missing ${formData.color} ${formData.petType || "pet"} named ${formData.name}`,
-        imageUrl: imageUrl,
-        reportedBy: {
-          uid: user.uid,
-          name: user.displayName || "Anonymous",
-          email: user.email || "",
-          photo: user.photoURL || null,
-        },
-        createdAt: serverTimestamp(),
-        likeCount: 0,
+          title: `Tag: ${formData.postType}`,
+          type: formData.postType,
+          petType: formData.petType,
+          catId: petDocRef.id,
+          description: formData.description || ` ${formData.color} ${formData.petType || "pet"} named ${formData.name}`,
+          imageUrl: imageUrl,
+          reportedBy: {
+            uid: user.uid,
+            name: user.displayName || "Anonymous",
+            email: user.email || "",
+            photo: user.photoURL || null,
+          },
+          createdAt: serverTimestamp(),
+          likeCount: 0,
         });
       } catch (postError: any) {
         console.error("Error creating post:", postError);
@@ -245,9 +246,9 @@ const CreatePostForm = () => {
 
       // Reset loading state first
       setLoading(false);
-      
-      alert("Missing cat reported successfully!");
-      
+
+      alert("Posted successfully!");
+
       // Reset form
       setFormData({
         petType: "",
@@ -263,12 +264,12 @@ const CreatePostForm = () => {
         missingYear: "",
         missingDate: "",
         image: null,
-        postType:""
+        postType: ""
       });
 
       // Clear timeout since submission succeeded
       clearTimeout(timeoutId);
-      
+
       // Redirect to home after a brief delay to ensure state is updated
       setTimeout(() => {
         router.push("/home");
@@ -277,7 +278,7 @@ const CreatePostForm = () => {
       console.error("Error reporting missing cat:", error);
       clearTimeout(timeoutId); // Clear timeout on error
       setLoading(false); // Ensure loading is reset on error
-      
+
       // Provide more detailed error message
       const errorMessage = error.message || "Unknown error occurred";
       alert(`Failed to report missing cat: ${errorMessage}\n\nPlease check your connection and try again.`);
@@ -301,10 +302,10 @@ const CreatePostForm = () => {
     { value: "12", label: "December" },
   ];
 
-  useEffect(()   => {
-    console.log('form',formData);
-    
-  },[formData,formData?.latitude])
+  useEffect(() => {
+    console.log('form', formData);
+
+  }, [formData, formData?.latitude])
 
   return (
     <div className="w-full max-w-2xl mx-auto p-4">
@@ -315,202 +316,202 @@ const CreatePostForm = () => {
             <FieldDescription>
               Fill in the details below to report a missing/found pet or just for fun. Missing/found cats will appear on the map and social feed.
             </FieldDescription>
-            
+
             <FieldGroup className="mt-4 space-y-4">
               {/*cat status */}
-               <Field>
+              <Field>
                 <FieldLabel htmlFor="post-type">Post type *</FieldLabel>
-                 <Select
-                    value={formData.postType}
-                    onValueChange={(value) => handleInputChange("postType", value)}
-                    required
-                  >
-                    <SelectTrigger 
-                      id="post-type"
-                      className={errors.postType ? "border-red-500 border-2" : ""}
-                    >
-                      <SelectValue placeholder="Select type of post" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="missing">Missing</SelectItem>
-                      <SelectItem value="found">Found</SelectItem>
-                       <SelectItem value="adoption">Adoption</SelectItem>
-                      <SelectItem value="social">Just for fun</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.postType && (
-                    <p className="text-red-500 text-sm mt-1">{errors.postType}</p>
-                  )}
-              </Field>
-
-              {formData.postType !== 'social' ? 
-
-              <>
-
-              {/* Pet Type */}
-              <Field>
-                <FieldLabel htmlFor="pet-type">Pet Type *</FieldLabel>
                 <Select
-                  value={formData.petType}
-                  onValueChange={(value) => handleInputChange("petType", value as "cat" | "dog" | "other")}
+                  value={formData.postType}
+                  onValueChange={(value) => handleInputChange("postType", value)}
                   required
                 >
-                  <SelectTrigger 
-                    id="pet-type"
-                    className={errors.petType ? "border-red-500 border-2" : ""}
+                  <SelectTrigger
+                    id="post-type"
+                    className={errors.postType ? "border-red-500 border-2" : ""}
                   >
-                    <SelectValue placeholder="Select pet type" />
+                    <SelectValue placeholder="Select type of post" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cat">Cat</SelectItem>
-                    <SelectItem value="dog">Dog</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="missing">Missing</SelectItem>
+                    <SelectItem value="found">Found</SelectItem>
+                    <SelectItem value="adoption">Adoption</SelectItem>
+                    <SelectItem value="social">Just for fun</SelectItem>
                   </SelectContent>
                 </Select>
-                {errors.petType && (
-                  <p className="text-red-500 text-sm mt-1">{errors.petType}</p>
+                {errors.postType && (
+                  <p className="text-red-500 text-sm mt-1">{errors.postType}</p>
                 )}
               </Field>
 
-              {/* Pet Name */}
-              <Field>
-                <FieldLabel htmlFor="pet-name">
-                  {formData.postType === 'missing' ? 'Pet Name *' : 'Pet Name (Optional)'}
-                </FieldLabel>
-                <Input
-                  id="pet-name"
-                  placeholder={formData.petType === "dog" ? "e.g., Max, Bella, Buddy..." : formData.petType === "other" ? "e.g., Birdy, Rabbit..." : "e.g., Whiskers, Luna, Tuna..."}
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  required={formData.postType === 'missing'}
-                  className={errors.name ? "border-red-500 border-2" : ""}
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-                )}
-              </Field>
+              {formData.postType !== 'social' ?
 
-              {/* Color and Gender Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel htmlFor="pet-color">Color/Coat Color *</FieldLabel>
-                  <Select
-                    value={formData.color}
-                    onValueChange={(value) => handleInputChange("color", value)}
-                    required
-                  >
-                    <SelectTrigger 
-                      id="pet-color"
-                      className={errors.color ? "border-red-500 border-2" : ""}
+                <>
+
+                  {/* Pet Type */}
+                  <Field>
+                    <FieldLabel htmlFor="pet-type">Pet Type *</FieldLabel>
+                    <Select
+                      value={formData.petType}
+                      onValueChange={(value) => handleInputChange("petType", value as "cat" | "dog" | "other")}
+                      required
                     >
-                      <SelectValue placeholder="Select color" />
-                    </SelectTrigger>
-                {errors.color && (
-                  <p className="text-red-500 text-sm mt-1">{errors.color}</p>
-                )}
-                    <SelectContent>
-                      <SelectItem value="black">Black</SelectItem>
-                      <SelectItem value="white">White</SelectItem>
-                      <SelectItem value="orange">Orange</SelectItem>
-                      <SelectItem value="brown">Brown</SelectItem>
-                      <SelectItem value="mixed">Mixed</SelectItem>
-                    <SelectItem value="others">Others</SelectItem>
-                  </SelectContent>
-                  </Select>
-                  {errors.color && (
-                    <p className="text-red-500 text-sm mt-1">{errors.color}</p>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="cat-gender">Gender *</FieldLabel>
-                  <Select
-                    value={formData.gender}
-                    onValueChange={(value) => handleInputChange("gender", value)}
-                    required
-                  >
-                    <SelectTrigger 
-                      id="cat-gender"
-                      className={errors.gender ? "border-red-500 border-2" : ""}
+                      <SelectTrigger
+                        id="pet-type"
+                        className={errors.petType ? "border-red-500 border-2" : ""}
+                      >
+                        <SelectValue placeholder="Select pet type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cat">Cat</SelectItem>
+                        <SelectItem value="dog">Dog</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.petType && (
+                      <p className="text-red-500 text-sm mt-1">{errors.petType}</p>
+                    )}
+                  </Field>
+
+                  {/* Pet Name */}
+                  <Field>
+                    <FieldLabel htmlFor="pet-name">
+                      {formData.postType === 'missing' ? 'Pet Name *' : 'Pet Name (Optional)'}
+                    </FieldLabel>
+                    <Input
+                      id="pet-name"
+                      placeholder={formData.petType === "dog" ? "e.g., Max, Bella, Buddy..." : formData.petType === "other" ? "e.g., Birdy, Rabbit..." : "e.g., Whiskers, Luna, Tuna..."}
+                      value={formData.name}
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      required={formData.postType === 'missing'}
+                      className={errors.name ? "border-red-500 border-2" : ""}
+                    />
+                    {errors.name && (
+                      <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                    )}
+                  </Field>
+
+                  {/* Color and Gender Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field>
+                      <FieldLabel htmlFor="pet-color">Color/Coat Color *</FieldLabel>
+                      <Select
+                        value={formData.color}
+                        onValueChange={(value) => handleInputChange("color", value)}
+                        required
+                      >
+                        <SelectTrigger
+                          id="pet-color"
+                          className={errors.color ? "border-red-500 border-2" : ""}
+                        >
+                          <SelectValue placeholder="Select color" />
+                        </SelectTrigger>
+                        {errors.color && (
+                          <p className="text-red-500 text-sm mt-1">{errors.color}</p>
+                        )}
+                        <SelectContent>
+                          <SelectItem value="black">Black</SelectItem>
+                          <SelectItem value="white">White</SelectItem>
+                          <SelectItem value="orange">Orange</SelectItem>
+                          <SelectItem value="brown">Brown</SelectItem>
+                          <SelectItem value="mixed">Mixed</SelectItem>
+                          <SelectItem value="others">Others</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.color && (
+                        <p className="text-red-500 text-sm mt-1">{errors.color}</p>
+                      )}
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="cat-gender">Gender *</FieldLabel>
+                      <Select
+                        value={formData.gender}
+                        onValueChange={(value) => handleInputChange("gender", value)}
+                        required
+                      >
+                        <SelectTrigger
+                          id="cat-gender"
+                          className={errors.gender ? "border-red-500 border-2" : ""}
+                        >
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        {errors.gender && (
+                          <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
+                        )}
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="unknown">Unknown</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {errors.gender && (
+                        <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
+                      )}
+                    </Field>
+                  </div>
+
+                  {/* Age */}
+                  <Field>
+                    <FieldLabel htmlFor="pet-age">Age *</FieldLabel>
+                    <Select
+                      value={formData.age}
+                      onValueChange={(value) => handleInputChange("age", value)}
+                      required
                     >
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                {errors.gender && (
-                  <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
-                )}
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="unknown">Unknown</SelectItem>
-                  </SelectContent>
-                  </Select>
-                  {errors.gender && (
-                    <p className="text-red-500 text-sm mt-1">{errors.gender}</p>
-                  )}
-                </Field>
-              </div>
+                      <SelectTrigger
+                        id="pet-age"
+                        className={errors.age ? "border-red-500 border-2" : ""}
+                      >
+                        <SelectValue placeholder="Select age range" />
+                      </SelectTrigger>
+                      {errors.age && (
+                        <p className="text-red-500 text-sm mt-1">{errors.age}</p>
+                      )}
+                      <SelectContent>
+                        {formData.petType === "cat" && (
+                          <>
+                            <SelectItem value="kitten">Kitten (0-1 year)</SelectItem>
+                            <SelectItem value="young">Young (1-3 years)</SelectItem>
+                            <SelectItem value="adult">Adult (3-7 years)</SelectItem>
+                            <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                          </>
+                        )}
+                        {formData.petType === "dog" && (
+                          <>
+                            <SelectItem value="puppy">Puppy (0-1 year)</SelectItem>
+                            <SelectItem value="young">Young (1-3 years)</SelectItem>
+                            <SelectItem value="adult">Adult (3-7 years)</SelectItem>
+                            <SelectItem value="senior">Senior (7+ years)</SelectItem>
+                          </>
+                        )}
+                        {formData.petType === "other" && (
+                          <>
+                            <SelectItem value="young">Young</SelectItem>
+                            <SelectItem value="adult">Adult</SelectItem>
+                            <SelectItem value="senior">Senior</SelectItem>
+                          </>
+                        )}
+                        <SelectItem value="unknown">Unknown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.age && (
+                      <p className="text-red-500 text-sm mt-1">{errors.age}</p>
+                    )}
+                  </Field>
 
-              {/* Age */}
-              <Field>
-                <FieldLabel htmlFor="pet-age">Age *</FieldLabel>
-                <Select
-                  value={formData.age}
-                  onValueChange={(value) => handleInputChange("age", value)}
-                  required
-                >
-                  <SelectTrigger 
-                    id="pet-age"
-                    className={errors.age ? "border-red-500 border-2" : ""}
-                  >
-                    <SelectValue placeholder="Select age range" />
-                  </SelectTrigger>
-                {errors.age && (
-                  <p className="text-red-500 text-sm mt-1">{errors.age}</p>
-                )}
-                  <SelectContent>
-                    {formData.petType === "cat" && (
-                      <>
-                        <SelectItem value="kitten">Kitten (0-1 year)</SelectItem>
-                        <SelectItem value="young">Young (1-3 years)</SelectItem>
-                        <SelectItem value="adult">Adult (3-7 years)</SelectItem>
-                        <SelectItem value="senior">Senior (7+ years)</SelectItem>
-                      </>
-                    )}
-                    {formData.petType === "dog" && (
-                      <>
-                        <SelectItem value="puppy">Puppy (0-1 year)</SelectItem>
-                        <SelectItem value="young">Young (1-3 years)</SelectItem>
-                        <SelectItem value="adult">Adult (3-7 years)</SelectItem>
-                        <SelectItem value="senior">Senior (7+ years)</SelectItem>
-                      </>
-                    )}
-                    {formData.petType === "other" && (
-                      <>
-                        <SelectItem value="young">Young</SelectItem>
-                        <SelectItem value="adult">Adult</SelectItem>
-                        <SelectItem value="senior">Senior</SelectItem>
-                      </>
-                    )}
-                    <SelectItem value="unknown">Unknown</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.age && (
-                  <p className="text-red-500 text-sm mt-1">{errors.age}</p>
-                )}
-              </Field>
-
-              {/* Missing Date */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Field>
-                  <FieldLabel>{formData.postType === 'missing' ? 'Missing Date *' :
-                  'Found Date *'} </FieldLabel>
-                  <Input
-                    type="date"
-                    value={formData.missingDate}
-                    onChange={(e) => handleInputChange("missingDate", e.target.value)}
-                    max={new Date().toISOString().split("T")[0]}
-                  />
-                </Field>
-                {/* <Field>
+                  {/* Missing Date */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Field>
+                      <FieldLabel>{formData.postType === 'missing' ? 'Missing Date *' :
+                        'Found Date *'} </FieldLabel>
+                      <Input
+                        type="date"
+                        value={formData.missingDate}
+                        onChange={(e) => handleInputChange("missingDate", e.target.value)}
+                        max={new Date().toISOString().split("T")[0]}
+                      />
+                    </Field>
+                    {/* <Field>
                   <FieldLabel>Or select month</FieldLabel>
                   <Select
                     value={formData.missingMonth}
@@ -546,145 +547,145 @@ const CreatePostForm = () => {
                     </SelectContent>
                   </Select>
                 </Field> */}
-              </div>
+                  </div>
 
-              {/* Location */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Field className="md:col-span-3">
-                  <FieldLabel htmlFor="location">Location/Area *</FieldLabel>
-                  <Input
-                    id="location"
-                    placeholder="e.g., Downtown, Park Street, Near Central Station..."
-                    value={formData.location}
-                    onChange={(e) => handleInputChange("location", e.target.value)}
-                    required
-                    className={errors.location ? "border-red-500 border-2" : ""}
+                  {/* Location */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Field className="md:col-span-3">
+                      <FieldLabel htmlFor="location">Location/Area *</FieldLabel>
+                      <Input
+                        id="location"
+                        placeholder="e.g., Downtown, Park Street, Near Central Station..."
+                        value={formData.location}
+                        onChange={(e) => handleInputChange("location", e.target.value)}
+                        required
+                        className={errors.location ? "border-red-500 border-2" : ""}
+                      />
+                      {errors.location && (
+                        <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                      )}
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="latitude">Latitude *</FieldLabel>
+                      <Input
+                        id="latitude"
+                        type="number"
+                        step="any"
+                        placeholder="12.9716"
+                        value={formData.latitude}
+                        onChange={(e) => handleInputChange("latitude", e.target.value)}
+                        disabled
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="longitude">Longitude *</FieldLabel>
+                      <Input
+                        id="longitude"
+                        type="number"
+                        step="any"
+                        placeholder="77.5946"
+                        value={formData.longitude}
+                        onChange={(e) => handleInputChange("longitude", e.target.value)}
+                        disabled
+                      />
+                    </Field>
+                  </div>
+
+                  <MapView
+                    map_center={mapCenter}
+                    updateMapCenter={updateMapCenter}
+                  // catData={[]}
+                  // locationForm={true}
                   />
-                  {errors.location && (
-                    <p className="text-red-500 text-sm mt-1">{errors.location}</p>
-                  )}
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="latitude">Latitude *</FieldLabel>
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="any"
-                    placeholder="12.9716"
-                    value={formData.latitude}
-                    onChange={(e) => handleInputChange("latitude", e.target.value)}
-                    disabled
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="longitude">Longitude *</FieldLabel>
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="any"
-                    placeholder="77.5946"
-                    value={formData.longitude}
-                    onChange={(e) => handleInputChange("longitude", e.target.value)}
-                    disabled
-                  />
-                </Field>
-              </div>
 
-              <MapView 
-              map_center={map_center} 
-              updateMapCenter={updateMapCenter}
-              // catData={[]}
-              // locationForm={true}
-              />
+                  {/* Description */}
+                  <Field>
+                    <FieldLabel htmlFor="description">Additional Details</FieldLabel>
+                    <Textarea
+                      id="description"
+                      placeholder="Any distinguishing features, collar details, behavior, etc."
+                      value={formData.description}
+                      onChange={(e) => handleInputChange("description", e.target.value)}
+                      rows={4}
+                      className={`resize-none ${errors.description ? "border-red-500 border-2" : ""}`}
+                    />
+                    {errors.description && (
+                      <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                    )}
+                  </Field>
 
-              {/* Description */}
-              <Field>
-                <FieldLabel htmlFor="description">Additional Details</FieldLabel>
-                <Textarea
-                  id="description"
-                  placeholder="Any distinguishing features, collar details, behavior, etc."
-                  value={formData.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
-                  rows={4}
-                  className={`resize-none ${errors.description ? "border-red-500 border-2" : ""}`}
-                />
-                {errors.description && (
-                  <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-                )}
-              </Field>
+                  {/* Image Upload */}
+                  <Field>
+                    <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        handleInputChange("image", file);
+                      }}
+                    />
+                    {formData.image && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Selected: {formData.image.name}
+                      </p>
+                    )}
+                    {!formData.image && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        No photo selected. A default image will be used based on pet type.
+                      </p>
+                    )}
+                  </Field>
 
-              {/* Image Upload */}
-              <Field>
-                <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    handleInputChange("image", file);
-                  }}
-                />
-                {formData.image && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Selected: {formData.image.name}
-                  </p>
-                )}
-                {!formData.image && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    No photo selected. A default image will be used based on pet type.
-                  </p>
-                )}
-              </Field>
+                </>
+                :
 
-              </>
-              :
+                <>
 
-              <>
+                  {/* Description */}
+                  <Field>
+                    <FieldLabel htmlFor="description">Whats on your mind? *</FieldLabel>
+                    <Textarea
+                      id="description"
+                      placeholder="write caption here..."
+                      value={formData.description}
+                      onChange={(e) => handleInputChange("description", e.target.value)}
+                      rows={4}
+                      className={`resize-none ${errors.description ? "border-red-500 border-2" : ""}`}
+                      required
+                    />
+                    {errors.description && (
+                      <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                    )}
+                  </Field>
 
-              {/* Description */}
-              <Field>
-                <FieldLabel htmlFor="description">Whats on your mind? *</FieldLabel>
-                <Textarea
-                  id="description"
-                  placeholder="write caption here..."
-                  value={formData.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
-                  rows={4}
-                  className={`resize-none ${errors.description ? "border-red-500 border-2" : ""}`}
-                  required
-                />
-                {errors.description && (
-                  <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-                )}
-              </Field>
+                  {/* Image Upload */}
+                  <Field>
+                    <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        handleInputChange("image", file);
+                      }}
+                    />
+                    {formData.image && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Selected: {formData.image.name}
+                      </p>
+                    )}
+                    {!formData.image && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        No photo selected. A default image will be used.
+                      </p>
+                    )}
+                  </Field>
 
-              {/* Image Upload */}
-              <Field>
-                <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    handleInputChange("image", file);
-                  }}
-                />
-                {formData.image && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Selected: {formData.image.name}
-                  </p>
-                )}
-                {!formData.image && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    No photo selected. A default image will be used.
-                  </p>
-                )}
-              </Field>
-
-              </>
-            }
+                </>
+              }
             </FieldGroup>
           </FieldSet>
 

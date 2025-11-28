@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -24,9 +24,27 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+const MapView = dynamic(() => import("./MapView"), {
+  ssr: false,
+});
 // No need to import default image functions - we use icons instead
 
-const FoundForm = () => {
+interface FoundPetData {
+  petType: "cat" | "dog" | "other" | "";
+  color: string;
+  gender: string;
+  age: string;
+  location?: string;
+  latitude?: string;
+  longitude?: string;
+  foundDate?: string;
+  foundMonth?: string;
+  foundYear?: string;
+  description?: string;
+}
+
+const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -45,8 +63,15 @@ const FoundForm = () => {
     foundDate: "",
     image: null as File | null,
   });
+  const [map_center, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
 
-const handleInputChange = (field: string, value: string | File | null) => {
+  const updateMapCenter = (data: [number, number]) => {
+    setMapCenter(data);
+    handleInputChange("latitude", String(data[0]))
+    handleInputChange("longitude", String(data[1]))
+  };
+
+  const handleInputChange = (field: string, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (errors[field]) {
@@ -57,6 +82,39 @@ const handleInputChange = (field: string, value: string | File | null) => {
       });
     }
   };
+
+  useEffect(() => {
+    if (foundPetData) {
+      setFormData(prev => ({
+        ...prev,
+        petType: foundPetData.petType,
+        color: foundPetData.color,
+        gender: foundPetData.gender,
+        age: foundPetData.age,
+      }));
+    }
+  }, [foundPetData]);
+
+
+  useEffect(() => {
+    console.log('foundPetData in foundform', foundPetData);
+    if (foundPetData) {
+      setFormData(prev => ({
+        ...prev,
+        color: (foundPetData?.color || "").toLowerCase(),
+        age: (foundPetData?.age || "").toLowerCase(),
+        petType: (foundPetData?.petType || "").toLowerCase() as "cat" | "dog" | "other" | "",
+        gender: (foundPetData?.gender || "").toLowerCase(),
+        location: foundPetData.location || "",
+        latitude: foundPetData.latitude || "",
+        longitude: foundPetData.longitude || "",
+        foundDate: foundPetData.foundDate || "",
+        foundMonth: foundPetData.foundMonth || "",
+        foundYear: foundPetData.foundYear || "",
+        description: foundPetData.description || ""
+      }));
+    }
+  }, [foundPetData])
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -102,7 +160,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
     }
 
     setLoading(true);
-    
+
     // Safety timeout - reset loading state after 30 seconds if something goes wrong
     const timeoutId = setTimeout(() => {
       setLoading(false);
@@ -122,7 +180,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
           throw new Error(imageError.message || "Failed to upload image. Please try again.");
         }
       }
-      
+
       // If no image uploaded, imageUrl will remain empty
       // This will trigger icon display in PostCard instead of an image
 
@@ -130,8 +188,8 @@ const handleInputChange = (field: string, value: string | File | null) => {
       const foundDateObj = formData.foundDate
         ? new Date(formData.foundDate)
         : formData.foundMonth && formData.foundYear
-        ? new Date(parseInt(formData.foundYear), parseInt(formData.foundMonth) - 1, 1)
-        : new Date();
+          ? new Date(parseInt(formData.foundYear), parseInt(formData.foundMonth) - 1, 1)
+          : new Date();
 
       // Get location (or use default Bangalore coordinates)
       const lat = formData.latitude ? parseFloat(formData.latitude) : 12.9716;
@@ -142,30 +200,30 @@ const handleInputChange = (field: string, value: string | File | null) => {
       try {
         const petsRef = collection(db, "pets");
         petDocRef = await addDoc(petsRef, {
-        petType: formData.petType,
-        color: formData.color,
-        gender: formData.gender || "unknown",
-        age: formData.age || "unknown",
-        description: formData.description,
-        status: "found",
-        location: formData.location,
-        position: [lat, lng],
-        latitude: lat,
-        longitude: lng,
-        foundDate: foundDateObj,
-        foundMonth: formData.foundMonth,
-        foundYear: formData.foundYear,
-        imageUrl: imageUrl,
-        reportedBy: {
-          uid: user.uid,
-          name: user.displayName || "Anonymous",
-          email: user.email || "",
-          photo: user.photoURL || null,
-        },
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        likeCount: 0,
-        daysAgo: Math.floor((Date.now() - foundDateObj.getTime()) / (1000 * 60 * 60 * 24)),
+          petType: formData.petType,
+          color: formData.color,
+          gender: formData.gender || "unknown",
+          age: formData.age || "unknown",
+          description: formData.description,
+          status: "found",
+          location: formData.location,
+          position: [lat, lng],
+          latitude: lat,
+          longitude: lng,
+          foundDate: foundDateObj,
+          foundMonth: formData.foundMonth,
+          foundYear: formData.foundYear,
+          imageUrl: imageUrl,
+          reportedBy: {
+            uid: user.uid,
+            name: user.displayName || "Anonymous",
+            email: user.email || "",
+            photo: user.photoURL || null,
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          likeCount: 0,
+          daysAgo: Math.floor((Date.now() - foundDateObj.getTime()) / (1000 * 60 * 60 * 24)),
         });
       } catch (firestoreError: any) {
         console.error("Error saving to cats collection:", firestoreError);
@@ -176,20 +234,20 @@ const handleInputChange = (field: string, value: string | File | null) => {
       try {
         const postsRef = collection(db, "posts");
         await addDoc(postsRef, {
-        title: `Found: ${formData.color} ${formData.petType || "pet"}`,
-        type: "found",
-        petType: formData.petType,
-        catId: petDocRef.id,
-        description: formData.description || `Found ${formData.color} ${formData.petType || "pet"} in ${formData.location}`,
-        imageUrl: imageUrl,
-        reportedBy: {
-          uid: user.uid,
-          name: user.displayName || "Anonymous",
-          email: user.email || "",
-          photo: user.photoURL || null,
-        },
-        createdAt: serverTimestamp(),
-        likeCount: 0,
+          title: `Found: ${formData.color} ${formData.petType || "pet"}`,
+          type: "found",
+          petType: formData.petType,
+          catId: petDocRef.id,
+          description: formData.description || `Found ${formData.color} ${formData.petType || "pet"} in ${formData.location}`,
+          imageUrl: imageUrl,
+          reportedBy: {
+            uid: user.uid,
+            name: user.displayName || "Anonymous",
+            email: user.email || "",
+            photo: user.photoURL || null,
+          },
+          createdAt: serverTimestamp(),
+          likeCount: 0,
         });
       } catch (postError: any) {
         console.error("Error creating post:", postError);
@@ -199,9 +257,9 @@ const handleInputChange = (field: string, value: string | File | null) => {
 
       // Reset loading state first
       setLoading(false);
-      
+
       alert("Found pet reported successfully!");
-      
+
       // Reset form
       setFormData({
         petType: "",
@@ -220,7 +278,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
 
       // Clear timeout since submission succeeded
       clearTimeout(timeoutId);
-      
+
       // Redirect to home after a brief delay to ensure state is updated
       setTimeout(() => {
         router.push("/home");
@@ -229,7 +287,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
       console.error("Error reporting found cat:", error);
       clearTimeout(timeoutId); // Clear timeout on error
       setLoading(false); // Ensure loading is reset on error
-      
+
       // Provide more detailed error message
       const errorMessage = error.message || "Unknown error occurred";
       alert(`Failed to report found pet: ${errorMessage}\n\nPlease check your connection and try again.`);
@@ -260,19 +318,19 @@ const handleInputChange = (field: string, value: string | File | null) => {
           <FieldSet>
             <FieldLegend className="text-xl font-bold">Report a Found Pet</FieldLegend>
             <FieldDescription>
-              Found a stray pet? Report it here so the owner can find them. Check the Missing tab to see if it matches any reported missing pets.
+              Found a stray pet? Report it here so the owner can find them.
             </FieldDescription>
-            
+
             <FieldGroup className="mt-4 space-y-4">
               {/* Pet Type */}
               <Field>
                 <FieldLabel htmlFor="pet-type">Pet Type *</FieldLabel>
                 <Select
-                  value={formData.petType}
+                  value={foundPetData?.petType}
                   onValueChange={(value) => handleInputChange("petType", value as "cat" | "dog" | "other")}
                   required
                 >
-                  <SelectTrigger 
+                  <SelectTrigger
                     id="pet-type"
                     className={errors.petType ? "border-red-500 border-2" : ""}
                   >
@@ -294,11 +352,11 @@ const handleInputChange = (field: string, value: string | File | null) => {
                 <Field>
                   <FieldLabel htmlFor="pet-color">Color/Coat Color *</FieldLabel>
                   <Select
-                    value={formData.color}
+                    value={foundPetData?.color}
                     onValueChange={(value) => handleInputChange("color", value)}
                     required
                   >
-                    <SelectTrigger 
+                    <SelectTrigger
                       id="pet-color"
                       className={errors.color ? "border-red-500 border-2" : ""}
                     >
@@ -320,7 +378,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
                 <Field>
                   <FieldLabel htmlFor="cat-gender">Gender</FieldLabel>
                   <Select
-                    value={formData.gender}
+                    value={foundPetData?.gender}
                     onValueChange={(value) => handleInputChange("gender", value)}
                   >
                     <SelectTrigger id="cat-gender">
@@ -339,7 +397,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
               <Field>
                 <FieldLabel htmlFor="pet-age">Age</FieldLabel>
                 <Select
-                  value={formData.age}
+                  value={foundPetData?.age}
                   onValueChange={(value) => handleInputChange("age", value)}
                 >
                   <SelectTrigger id="pet-age">
@@ -385,7 +443,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
                     max={new Date().toISOString().split("T")[0]}
                   />
                 </Field>
-                <Field>
+                {/* <Field>
                   <FieldLabel>Or select month</FieldLabel>
                   <Select
                     value={formData.foundMonth}
@@ -420,9 +478,8 @@ const handleInputChange = (field: string, value: string | File | null) => {
                       ))}
                     </SelectContent>
                   </Select>
-                </Field>
+                </Field> */}
               </div>
-
               {/* Location */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field className="md:col-span-3">
@@ -440,7 +497,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
                   )}
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="latitude">Latitude (Optional)</FieldLabel>
+                  <FieldLabel htmlFor="latitude">Latitude *</FieldLabel>
                   <Input
                     id="latitude"
                     type="number"
@@ -448,10 +505,11 @@ const handleInputChange = (field: string, value: string | File | null) => {
                     placeholder="12.9716"
                     value={formData.latitude}
                     onChange={(e) => handleInputChange("latitude", e.target.value)}
+                    disabled
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="longitude">Longitude (Optional)</FieldLabel>
+                  <FieldLabel htmlFor="longitude">Longitude *</FieldLabel>
                   <Input
                     id="longitude"
                     type="number"
@@ -459,21 +517,32 @@ const handleInputChange = (field: string, value: string | File | null) => {
                     placeholder="77.5946"
                     value={formData.longitude}
                     onChange={(e) => handleInputChange("longitude", e.target.value)}
+                    disabled
                   />
                 </Field>
               </div>
+
+              <MapView
+                map_center={map_center}
+                updateMapCenter={updateMapCenter}
+              // catData={[]}
+              // locationForm={true}
+              />
 
               {/* Description */}
               <Field>
                 <FieldLabel htmlFor="description">Additional Details</FieldLabel>
                 <Textarea
                   id="description"
-                  placeholder="Any distinguishing features, collar details, condition, etc."
+                  placeholder="Any distinguishing features, collar details, behavior, etc."
                   value={formData.description}
                   onChange={(e) => handleInputChange("description", e.target.value)}
                   rows={4}
-                  className="resize-none"
+                  className={`resize-none ${errors.description ? "border-red-500 border-2" : ""}`}
                 />
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
               </Field>
 
               {/* Image Upload */}
@@ -491,6 +560,11 @@ const handleInputChange = (field: string, value: string | File | null) => {
                 {formData.image && (
                   <p className="text-sm text-gray-600 mt-1">
                     Selected: {formData.image.name}
+                  </p>
+                )}
+                {!formData.image && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No photo selected. A default image will be used based on pet type.
                   </p>
                 )}
               </Field>

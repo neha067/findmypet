@@ -31,6 +31,7 @@ interface Post {
 interface FilterState {
   missingCatCheck: boolean;
   foundCatCheck: boolean;
+  adoptionCheck: boolean;
   petTypeFilter: "cat" | "dog" | "other" | null;
   colorFilter: string | null;
   ageFilter: string | null;
@@ -39,9 +40,32 @@ interface FilterState {
 interface PetData {
   id: string;
   petType?: "cat" | "dog" | "other";
+  name?: string;
+  status: string;
+  daysAgo?: number;
+  position: [number, number];
   color?: string;
+  gender?: string;
   age?: string;
-  status?: string;
+  location?: string;
+  imageUrl?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+
+interface FoundPetData {
+  petType: "cat" | "dog" | "other" | "";
+  color: string;
+  gender: string;
+  age: string;
+  location?: string;
+  latitude?: string;
+  longitude?: string;
+  foundDate?: string;
+  foundMonth?: string;
+  foundYear?: string;
+  description?: string;
 }
 
 interface SocialProps {
@@ -53,7 +77,40 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("timeline");
-  
+  const [foundPetData, setFoundPetData] = useState<FoundPetData>({
+    petType: "",
+    color: "",
+    gender: "",
+    age: ""
+  });
+
+  const changeTabToCreate = (data: any) => {
+    console.log('pet', data);
+    setFoundPetData({
+      petType: data?.petType || "",
+      color: data?.color || "",
+      gender: data?.gender || "",
+      age: data?.age || "",
+      location: data?.location || "",
+      latitude: data?.latitude?.toString() || (data?.position ? data.position[0]?.toString() : ""),
+      longitude: data?.longitude?.toString() || (data?.position ? data.position[1]?.toString() : ""),
+      foundDate: data?.foundDate || "",
+      foundMonth: data?.foundMonth || "",
+      foundYear: data?.foundYear || "",
+      description: data?.description || ""
+    });
+  }
+
+  useEffect(() => {
+    console.log('foundPetData', foundPetData);
+    setActiveTab("found")
+  }, [foundPetData])
+
+  useEffect(() => {
+    console.log('catdata insocil', catData);
+
+  }, [catData])
+
   // Filter posts when filterState or posts change
   const filteredPosts = (() => {
     if (!filterState) {
@@ -65,17 +122,17 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
       if (filterState.petTypeFilter) {
         // Get petType from post or linked cat
         let postPetType: string | undefined = post.petType;
-        
+
         // If post doesn't have petType but has catId, get it from cat data
         if (!postPetType && post.catId && catData.length > 0) {
           const cat = catData.find((c) => c.id === post.catId);
           postPetType = cat?.petType;
         }
-        
+
         // Default to "cat" for backward compatibility if no petType found
         const normalizedPostPetType = String(postPetType || "cat").toLowerCase().trim();
         const normalizedFilterPetType = String(filterState.petTypeFilter).toLowerCase().trim();
-        
+
         if (normalizedPostPetType !== normalizedFilterPetType) {
           return false;
         }
@@ -83,16 +140,15 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
 
       // Filter by type (missing/found/adoption/social)
       // Social posts are always shown if no filters are active or if filters allow it
-      const typeMatches = 
+      const typeMatches =
         (filterState.missingCatCheck && post.type === "missing") ||
         (filterState.foundCatCheck && post.type === "found") ||
-        (post.type === "adoption") || // Adoption posts shown if any filter is active
+        (filterState.adoptionCheck && post.type === "adoption") ||
         (post.type === "social"); // Social posts shown if any filter is active
 
-      // If both checkboxes are unchecked, only show adoption and social posts
-      if (!filterState.missingCatCheck && !filterState.foundCatCheck) {
-        // Only show adoption and social posts when no status filters are active
-        return post.type === "adoption" || post.type === "social";
+      // If all status checkboxes are unchecked, only show social posts
+      if (!filterState.missingCatCheck && !filterState.foundCatCheck && !filterState.adoptionCheck) {
+        return post.type === "social";
       }
 
       if (!typeMatches) {
@@ -107,7 +163,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
       // Filter by color/age if post has catId and we have cat data
       if (post.catId && catData.length > 0) {
         const cat = catData.find((c) => c.id === post.catId);
-        
+
         if (cat) {
           // Filter by color
           if (filterState.colorFilter) {
@@ -123,7 +179,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
             }
             const itemAge = String(cat.age).toLowerCase().trim();
             const filterAge = String(filterState.ageFilter).toLowerCase().trim();
-            
+
             if (itemAge !== filterAge) {
               if (filterAge === "adult" && itemAge === "senior") {
                 // Senior cats included in adult
@@ -138,7 +194,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
       return true;
     });
   })();
-  
+
 
   // Real-time listener for posts
   useEffect(() => {
@@ -189,19 +245,19 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
   return (
     <div className="w-full max-w-5xl mx-auto">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-[50%] grid-cols-3 ">
-          <TabsTrigger value="timeline" className="cursor-pointer">Timeline</TabsTrigger>
-          <TabsTrigger value="create" className="cursor-pointer">Create a Post</TabsTrigger>
+        <TabsList className="grid w-[70%] grid-cols-3 dark:bg-slate-800 dark:text-slate-100 ">
+          <TabsTrigger value="timeline" className="cursor-pointer dark:data-[state=active]:bg-slate-700 dark:data-[state=inactive]:text-slate-400">Timeline</TabsTrigger>
+          <TabsTrigger value="create" className="cursor-pointer dark:data-[state=active]:bg-slate-700 dark:data-[state=inactive]:text-slate-400">Create a Post</TabsTrigger>
           {/* <TabsTrigger value="found">Report Found</TabsTrigger> */}
         </TabsList>
-        
-        <TabsContent value="timeline" className="mt-4">
+
+        <TabsContent value="timeline" className="mt-4 dark:bg-slate-900/50 p-2 rounded-lg">
           {/* Quick Create Post Buttons */}
           <div className="mb-4 flex gap-2 flex-wrap">
             <Button
               onClick={() => setActiveTab("create")}
               className="border justify-end border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 dark:active:bg-slate-600 text-slate-900 dark:text-slate-100 rounded-lg transition-colors text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
-              // className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors text-sm font-medium"
+            // className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors text-sm font-medium"
             >
               🐱 Create a Post
             </Button>
@@ -212,7 +268,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
               ✅ Report Found Cat
             </button> */}
           </div>
-          
+
           <ScrollArea className="h-[calc(100vh-13rem)] w-full rounded-md border dark:border-slate-700 p-4">
             <div className="w-full flex flex-col items-center gap-4">
               {loading ? (
@@ -222,7 +278,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                 </div>
               ) : filteredPosts.length > 0 ? (
                 <>
-                  {filterState && (filterState.missingCatCheck !== true || filterState.foundCatCheck !== true || filterState.petTypeFilter || filterState.colorFilter || filterState.ageFilter) && (
+                  {filterState && (filterState.missingCatCheck !== true || filterState.foundCatCheck !== true || filterState.adoptionCheck !== true || filterState.petTypeFilter || filterState.colorFilter || filterState.ageFilter) && (
                     <div className="w-full mb-2 px-3 py-2 bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 rounded-lg text-sm">
                       <span className="text-violet-800 dark:text-violet-200">
                         🔍 Showing {filteredPosts.length} of {posts.length} posts
@@ -233,11 +289,11 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                     // Find petType from linked cat if not in post
                     // Ensure type safety by filtering out empty strings and invalid values
                     let petType: "cat" | "dog" | "other" | undefined = undefined;
-                    
+
                     // Check post petType first
                     if (p.petType && (p.petType === "cat" || p.petType === "dog" || p.petType === "other")) {
                       petType = p.petType;
-                    } 
+                    }
                     // Fallback to linked pet if post doesn't have valid petType
                     else if (p.catId && catData.length > 0) {
                       const linkedPet = catData.find((c) => c.id === p.catId);
@@ -245,14 +301,17 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                         petType = linkedPet.petType;
                       }
                     }
-                    
+
                     return (
-                      <PostCard 
-                        key={p.id} 
-                        postId={p.id} 
+                      <PostCard
+                        key={p.id}
+                        postId={p.id}
                         title={p.title || "Untitled Post"}
                         imageUrl={p.imageUrl}
                         petType={petType}
+                        post={p}
+                        changeTabToCreate={changeTabToCreate}
+                        catData={catData}
                       />
                     );
                   })}
@@ -270,13 +329,19 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
             </div>
           </ScrollArea>
         </TabsContent>
-        
-        <TabsContent value="create" className="mt-4">
-          <CreatePostForm />
+
+        <TabsContent value="create" className="mt-4 dark:bg-slate-900/50 p-4 rounded-lg">
+          {/* Make only the create form scrollable and hide native scrollbars */}
+          <div className="w-full max-h-[calc(100vh-13rem)] overflow-auto scrollbar-hide">
+            <CreatePostForm
+            />
+          </div>
         </TabsContent>
-        
-        <TabsContent value="found" className="mt-4">
-          <FoundForm />
+
+        <TabsContent value="found" className="mt-4 dark:bg-slate-900/50 p-4 rounded-lg">
+          <div className="w-full max-h-[calc(100vh-13rem)] overflow-auto scrollbar-hide">
+            <FoundForm foundPetData={foundPetData} />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

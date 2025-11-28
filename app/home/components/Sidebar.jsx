@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Bold, Italic, Underline } from "lucide-react"
 import { Funnel } from 'lucide-react';
-export default function SideBar({catData,map_center,filterCatData,toggleHideSidebar}) {
+export default function SideBar({catData,map_center,filterCatData,toggleHideSidebar,changeTabValue,curTab,setShowsidebar}) {
   const [missingCatCheck, setMissingCatCheck] = useState(true)
   const [foundCatCheck, setFoundCatCheck] = useState(true)
   const [colorFilter, setColorFilter] = useState(null)
@@ -57,13 +57,44 @@ export default function SideBar({catData,map_center,filterCatData,toggleHideSide
 
     toggleHideSidebar()
   }
+  const handleHomeClick = () => {
+    changeTabValue('home');
+    toggleHideSidebar();
+  };
+
+  const handleMapClick = () => {
+    changeTabValue('map');
+    toggleHideSidebar();
+  };
+
+  const handleFilterClick = () => {
+    if (setShowsidebar) {
+      setShowsidebar(true);
+    }
+  };
+
   return (
-    <aside className="w-full md:w-10 border-r border-slate-200 bg-slate-50/80 backdrop-blur-sm">
+    <aside className="w-full md:w-10 border-r border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm">
       <div className="h-full flex flex-col gap-9 overflow-y-auto p-1">
         {/* <ClipboardPlus size={16} /> */}
-        <House size={16} />
-        <MapPinned size={16} />
-        <Funnel size={16} />
+        <House 
+          size={16} 
+          onClick={handleHomeClick}
+          className={`cursor-pointer transition-colors ${curTab === 'home' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
+          title="Timeline"
+        />
+        <MapPinned 
+          size={16} 
+          onClick={handleMapClick}
+          className={`cursor-pointer transition-colors ${curTab === 'map' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
+          title="Map Explorer"
+        />
+        <Funnel 
+          size={16} 
+          onClick={handleFilterClick}
+          className="cursor-pointer transition-colors text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+          title="Open Filters"
+        />
         
         {/* <PrimaryButton className="w-full mt-4">Apply Filters</PrimaryButton> */}
       </div>

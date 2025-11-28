@@ -25,16 +25,30 @@ import { Button } from "./ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import PetIcon, { SocialPostIcon } from "@/components/PetIcon";
 import UserAvatar from "@/components/UserAvatar";
-
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 interface PostCardProps {
   postId: string;
   title?: string;
   imageUrl?: string;
   createdAt?: any;
   petType?: "cat" | "dog" | "other";
+  post: any;
+  changeTabToCreate:any;
+  catData: any
 }
 
-export default function PostCard({ postId, title, imageUrl, createdAt, petType }: PostCardProps) {
+export default function PostCard({ postId, title, imageUrl, createdAt, petType,post,changeTabToCreate,catData }: PostCardProps) {
   const { user } = useAuth();
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -49,6 +63,18 @@ export default function PostCard({ postId, title, imageUrl, createdAt, petType }
     photo?: string;
   } | null>(null);
   const [postCreatedAt, setPostCreatedAt] = useState<any>(null);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState<"adoption" | "claim" | "report" | null>(null);
+  const [actionMessage, setActionMessage] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [postPet, setPostPet] = useState(null)
+
+
+ useEffect(() => {
+  console.log('pet in postcard',post);
+  console.log('catData in post',catData);
+  setPostPet(catData.find((it: { id: any; }) => it.id === post.catId))
+ },[catData,post])
 
   // Load post + comments + like status
   useEffect(() => {
@@ -256,6 +282,64 @@ export default function PostCard({ postId, title, imageUrl, createdAt, petType }
     }
   };
 
+  // Handle action button click
+  const handleActionClick = (type: "adoption" | "claim" | "report") => {
+    if(type === 'report'){
+      //redirect to create post
+      console.log('pet,postid',post,postId);
+      
+      changeTabToCreate(postPet)
+      return
+    }
+    if (!user) {
+      alert("Please login to perform this action");
+      return;
+    }
+    setActionType(type);
+    setActionDialogOpen(true);
+    setActionMessage("");
+  };
+
+  // Handle action submission
+  const handleActionSubmit = async () => {
+    if (!actionType || !actionMessage.trim()) {
+      alert("Please provide a message");
+      return;
+    }
+    if (!db || !user) {
+      alert("Error: Database or user not initialized");
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const dbInstance = db;
+      
+      // Create an action record in a new 'petActions' collection
+      const actionsRef = collection(dbInstance, "posts", postId, "actions");
+      await addDoc(actionsRef, {
+        userId: user.uid,
+        userName: user.displayName || "Anonymous",
+        userEmail: user.email || "",
+        userPhoto: user.photoURL || "",
+        actionType: actionType, // 'adoption', 'claim', or 'report'
+        message: actionMessage.trim(),
+        createdAt: serverTimestamp(),
+        status: "pending", // pending, accepted, rejected
+      });
+
+      alert(`${actionType === "adoption" ? "Adoption request" : actionType === "claim" ? "Pet claim" : "Found pet report"} submitted successfully!`);
+      setActionDialogOpen(false);
+      setActionMessage("");
+      setActionType(null);
+    } catch (error) {
+      console.error("Error submitting action:", error);
+      alert("Failed to submit action. Please try again.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="border dark:border-[#3B3B52] rounded-2xl p-4 shadow-lg bg-white dark:bg-[#1A1A28] max-w-md animate-pulse">
@@ -350,6 +434,14 @@ export default function PostCard({ postId, title, imageUrl, createdAt, petType }
           />
           <span className="font-medium">{likes}</span>
         </button>
+
+        <Button 
+          className="cursor-pointer"
+          onClick={() => handleActionClick(post.type === 'adoption' ? 'adoption' : post.type === 'found' ? 'claim' : 'report')}
+        >
+          {post.type === 'adoption' ? 'Request Adoption' : 
+          post.type === 'found' ? 'Claim Pet' : 'Report Found'}
+        </Button>
       </div>
 
       {/* Comments */}
@@ -409,6 +501,75 @@ export default function PostCard({ postId, title, imageUrl, createdAt, petType }
           </p>
         )}
       </div>
+
+      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
+        <DialogContent className="dark:bg-slate-800 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="dark:text-slate-100">
+              {actionType === 'adoption' && 'Request Adoption'}
+              {actionType === 'claim' && 'Claim Found Pet'}
+              {actionType === 'report' && 'Report Found Pet'}
+            </DialogTitle>
+            <DialogDescription className="dark:text-slate-400">
+              {actionType === 'adoption' && 'Tell us why you\'d like to adopt this pet and provide your contact information.'}
+              {actionType === 'claim' && 'If this is your pet, provide details to help verify your claim.'}
+              {actionType === 'report' && 'Help us locate the owner by providing details about where you found the pet.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="action-message" className="dark:text-slate-100">
+                {actionType === 'adoption' && 'Why do you want to adopt this pet?'}
+                {actionType === 'claim' && 'Proof or details of pet ownership'}
+                {actionType === 'report' && 'Where and when did you find the pet?'}
+              </Label>
+              <textarea
+                id="action-message"
+                placeholder={
+                  actionType === 'adoption' 
+                    ? 'Tell us about your home, experience with pets, and why you\'d be a great owner...' 
+                    : actionType === 'claim'
+                    ? 'Include any distinctive marks, collar details, or proof of ownership...'
+                    : 'Provide location, time, and current condition of the pet...'
+                }
+                value={actionMessage}
+                onChange={(e) => setActionMessage(e.target.value)}
+                className="w-full border rounded-md p-2 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600 resize-none text-sm"
+                rows={4}
+              />
+            </div>
+
+            {actionType === 'adoption' && (
+              <div className="space-y-2">
+                <Label htmlFor="contact-info" className="text-sm dark:text-slate-300">
+                  Contact Information
+                </Label>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  {user?.email && `Email: ${user.email}`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setActionDialogOpen(false)}
+              className="dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleActionSubmit}
+              disabled={actionLoading || !actionMessage.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {actionLoading ? 'Submitting...' : 'Submit'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

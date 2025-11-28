@@ -29,6 +29,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
   // Use filterState from props if provided, otherwise use local state
   const missingCatCheck = filterState?.missingCatCheck ?? true
   const foundCatCheck = filterState?.foundCatCheck ?? true
+  const adoptionCheck = filterState?.adoptionCheck ?? true
   const petTypeFilter = filterState?.petTypeFilter ?? null
   const colorFilter = filterState?.colorFilter ?? null
   const ageFilter = filterState?.ageFilter ?? null
@@ -41,6 +42,11 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
   const setFoundCatCheck = (value) => {
     if (setFilterState) {
       setFilterState(prev => ({ ...prev, foundCatCheck: value }))
+    }
+  }
+  const setAdoptionCheck = (value) => {
+    if (setFilterState) {
+      setFilterState(prev => ({ ...prev, adoptionCheck: value }))
     }
   }
   const setColorFilterValue = (value) => {
@@ -82,11 +88,11 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
       const statusMatches = 
         (missingCatCheck && normalizedStatus === "missing") || 
         (foundCatCheck && normalizedStatus === "found") ||
-        (normalizedStatus === "adoption"); // Adoption pets shown if any filter is active
+        (adoptionCheck && normalizedStatus === "adoption");
       
-      if (!missingCatCheck && !foundCatCheck) {
-        // If both checkboxes are unchecked, only show adoption pets
-        return normalizedStatus === "adoption";
+      // If all checkboxes are unchecked, show nothing
+      if (!missingCatCheck && !foundCatCheck && !adoptionCheck) {
+        return false;
       }
       
       if (!statusMatches) {
@@ -127,7 +133,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
       filterCatData(filtered);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [missingCatCheck, foundCatCheck, petTypeFilter, colorFilter, ageFilter, catData?.length]);
+  }, [missingCatCheck, foundCatCheck, adoptionCheck, petTypeFilter, colorFilter, ageFilter, catData?.length]);
   
   const handlefilter = (e) => {
     // Prevent any default behavior
@@ -157,7 +163,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
       // Normalize status to lowercase for comparison (new schema uses lowercase)
       const normalizedStatus = String(item.status || "").toLowerCase().trim();
       // Status filter - must match at least one checked status
-      // If both are unchecked, show nothing (or if both checked, show all)
+      // If all are unchecked, show nothing
       // Filter by pet type first
       if (petTypeFilter) {
         const itemPetType = String(item.petType || "cat").toLowerCase().trim();
@@ -169,11 +175,11 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
       const statusMatches = 
         (missingCatCheck && normalizedStatus === "missing") || 
         (foundCatCheck && normalizedStatus === "found") ||
-        (normalizedStatus === "adoption"); // Adoption pets shown if any filter is active
+        (adoptionCheck && normalizedStatus === "adoption");
       
-      // If neither checkbox is checked, only show adoption pets
-      if (!missingCatCheck && !foundCatCheck) {
-        return normalizedStatus === "adoption";
+      // If all checkboxes are unchecked, show nothing
+      if (!missingCatCheck && !foundCatCheck && !adoptionCheck) {
+        return false;
       }
       
       // If status doesn't match checked filters, exclude it
@@ -296,6 +302,10 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
             <Checkbox checked={foundCatCheck} onCheckedChange={() => setFoundCatCheck(!foundCatCheck)}/>
             <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Found Pets</Label>
           </div>
+          <div className="flex gap-1">
+            <Checkbox checked={adoptionCheck} onCheckedChange={() => setAdoptionCheck(!adoptionCheck)}/>
+            <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Adoption</Label>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -340,6 +350,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
                 setFilterState({
                   missingCatCheck: true,
                   foundCatCheck: true,
+                  adoptionCheck: true,
                   petTypeFilter: null,
                   colorFilter: null,
                   ageFilter: null,

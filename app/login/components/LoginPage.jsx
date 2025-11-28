@@ -8,6 +8,7 @@ import TextInput from "@/components/ui/TextInput.jsx";
 import { loginWithGoogle } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "../../home/page";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
@@ -54,7 +55,7 @@ export default function LoginPage() {
             {/* <div className="w-40 h-40 rounded-3xl bg-violet-200 dark:bg-violet-800 flex items-center justify-center mb-6">
               <span className="text-6xl">🐱</span>
             </div> */}
-              {/* <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
+            {/* <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 mb-4">
                 Helping lost pets find their way home.
               </h1>
               <p className="text-lg text-slate-700 dark:text-slate-300 max-w-md">
@@ -68,17 +69,17 @@ export default function LoginPage() {
       <div className="flex flex-1 items-center justify-center px-4 py-6">
         <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 p-8 shadow-lg border border-slate-200 dark:border-slate-700">
           <div className="grid grid-cols-2 gap-4 mb-2">
-            <Image 
-              src="/assets/logobrand.png" 
-              height={40} 
-              width={100} 
+            <Image
+              src="/assets/logobrand.png"
+              height={40}
+              width={100}
               alt="logo"
               style={{ width: 'auto', height: '100px' }}
             />
-            <Image 
-              src="/assets/loginH1.png" 
-              height={100} 
-              width={200} 
+            <Image
+              src="/assets/loginH1.png"
+              height={100}
+              width={200}
               alt="FindMyPet"
               style={{ width: 'auto', height: '100px' }}
             />
@@ -101,9 +102,9 @@ export default function LoginPage() {
               disabled
             />
 
-            <PrimaryButton className="w-full mt-2" disabled>
+            <Button className="w-full mt-2" disabled>
               Login (Coming Soon)
-            </PrimaryButton>
+            </Button>
 
             <div className="flex items-center gap-2 my-4">
               <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
