@@ -147,7 +147,7 @@ export async function createCat(catData: CreateCatData): Promise<DocumentReferen
   }
 
   try {
-    const catsRef = collection(db, "cats");
+    const petsRef = collection(db, "pets");
 
     // Determine the relevant date for daysAgo calculation
     const relevantDate = catData.status === "missing" 
@@ -189,7 +189,7 @@ export async function createCat(catData: CreateCatData): Promise<DocumentReferen
       }
     });
 
-    const docRef = await addDoc(catsRef, catDocument);
+    const docRef = await addDoc(petsRef, catDocument);
     return docRef;
   } catch (error: any) {
     console.error("Error creating pet document:", error);

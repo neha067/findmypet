@@ -138,10 +138,10 @@ const handleInputChange = (field: string, value: string | File | null) => {
       const lng = formData.longitude ? parseFloat(formData.longitude) : 77.5946;
 
       // Save to Firestore - wrap in try-catch for better error handling
-      let catDocRef;
+      let petDocRef;
       try {
-        const catsRef = collection(db, "cats");
-        catDocRef = await addDoc(catsRef, {
+        const petsRef = collection(db, "pets");
+        petDocRef = await addDoc(petsRef, {
         petType: formData.petType,
         color: formData.color,
         gender: formData.gender || "unknown",
@@ -179,7 +179,7 @@ const handleInputChange = (field: string, value: string | File | null) => {
         title: `Found: ${formData.color} ${formData.petType || "pet"}`,
         type: "found",
         petType: formData.petType,
-        catId: catDocRef.id,
+        catId: petDocRef.id,
         description: formData.description || `Found ${formData.color} ${formData.petType || "pet"} in ${formData.location}`,
         imageUrl: imageUrl,
         reportedBy: {

@@ -183,10 +183,10 @@ const CreatePostForm = () => {
       const lng = formData.longitude ? parseFloat(formData.longitude) : 77.5946;
 
       // Save to Firestore - wrap in try-catch for better error handling
-      let catDocRef;
+      let petDocRef;
       try {
-        const catsRef = collection(db, "cats");
-        catDocRef = await addDoc(catsRef, {
+        const petsRef = collection(db, "pets");
+        petDocRef = await addDoc(petsRef, {
         petType: formData.petType,
         name: formData.name,
         color: formData.color,
@@ -225,7 +225,7 @@ const CreatePostForm = () => {
         title: `Missing: ${formData.name}`,
         type: "missing",
         petType: formData.petType,
-        catId: catDocRef.id,
+        catId: petDocRef.id,
         description: formData.description || `Missing ${formData.color} ${formData.petType || "pet"} named ${formData.name}`,
         imageUrl: imageUrl,
         reportedBy: {

@@ -63,8 +63,8 @@ export default function HomePage() {
     }
 
     try {
-      const catsRef = collection(db, "cats");
-      const q = query(catsRef, orderBy("createdAt", "desc"));
+      const petsRef = collection(db, "pets");
+      const q = query(petsRef, orderBy("createdAt", "desc"));
 
       const unsubscribe = onSnapshot(
         q,
