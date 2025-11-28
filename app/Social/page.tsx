@@ -231,7 +231,21 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                   )}
                   {filteredPosts.map((p) => {
                     // Find petType from linked cat if not in post
-                    const petType = p.petType || (p.catId && catData.find((c) => c.id === p.catId)?.petType);
+                    // Ensure type safety by filtering out empty strings and invalid values
+                    let petType: "cat" | "dog" | "other" | undefined = undefined;
+                    
+                    // Check post petType first
+                    if (p.petType && (p.petType === "cat" || p.petType === "dog" || p.petType === "other")) {
+                      petType = p.petType;
+                    } 
+                    // Fallback to linked pet if post doesn't have valid petType
+                    else if (p.catId && catData.length > 0) {
+                      const linkedPet = catData.find((c) => c.id === p.catId);
+                      if (linkedPet?.petType && (linkedPet.petType === "cat" || linkedPet.petType === "dog" || linkedPet.petType === "other")) {
+                        petType = linkedPet.petType;
+                      }
+                    }
+                    
                     return (
                       <PostCard 
                         key={p.id} 

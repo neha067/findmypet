@@ -86,14 +86,14 @@ export default function PostCard({ postId, title, imageUrl, createdAt, petType }
           setPostAuthor({
             name: data.reportedBy.name || "Anonymous",
             email: data.reportedBy.email || "",
-            photo: validPhoto,
+            photo: validPhoto || undefined,
           });
         } else {
           // Fallback if reportedBy doesn't exist (for old posts)
           setPostAuthor({
             name: "Anonymous",
             email: "",
-            photo: null,
+            photo: undefined,
           });
         }
         

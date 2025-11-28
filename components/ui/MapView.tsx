@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
+import PetIcon from "@/components/PetIcon";
 
 // Fix default marker icons (required in many bundlers)
 if (typeof window !== "undefined") {
