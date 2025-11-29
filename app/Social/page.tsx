@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -86,7 +86,7 @@ interface SocialProps {
   handleShowInMap?: (petId: string, location: [number, number]) => void;
 }
 
-const Social = ({ filterState, catData = [], handleShowInMap }: SocialProps) => {
+const SocialContent = ({ filterState, catData = [], handleShowInMap }: SocialProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("timeline");
@@ -129,6 +129,13 @@ const Social = ({ filterState, catData = [], handleShowInMap }: SocialProps) => 
     }
   }, [foundPetData])
 
+  // Switch to timeline tab if id query param is present
+  useEffect(() => {
+    if (postIdFromUrl) {
+      setActiveTab("timeline");
+    }
+  }, [postIdFromUrl]);
+
   useEffect(() => {
     console.log('catdata insocil', catData);
 
@@ -150,7 +157,7 @@ const Social = ({ filterState, catData = [], handleShowInMap }: SocialProps) => 
 
       // Filter by specific post ID if present in URL
       if (postIdFromUrl) {
-        return post.id === postIdFromUrl;
+        return post.id === postIdFromUrl || post.catId === postIdFromUrl;
       }
 
       // Filter by pet type first (if filter is active)
@@ -405,4 +412,10 @@ const Social = ({ filterState, catData = [], handleShowInMap }: SocialProps) => 
   );
 };
 
-export default Social;
+export default function Social(props: SocialProps) {
+  return (
+    <Suspense fallback={<div className="flex justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div></div>}>
+      <SocialContent {...props} />
+    </Suspense>
+  );
+}

@@ -17,6 +17,7 @@ import Image from "next/image";
 import PetIcon from "@/components/PetIcon";
 import { Search, Crosshair, Maximize2, Minimize2, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 
 // Fix default marker icons (required in many bundlers)
@@ -85,6 +86,7 @@ export default function MapViewUI({ map_center, catData, updateMapCenter, select
     }
   };
   const mapWrapperRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   const handleLocateMe = () => {
     // if (!map) return;
@@ -333,20 +335,30 @@ export default function MapViewUI({ map_center, catData, updateMapCenter, select
                     const normalizedStatus = String(cat.status || "").toLowerCase().trim();
                     if (normalizedStatus === "missing") {
                       return (
-                        <Button className="w-full bg-violet-600 hover:bg-violet-700 text-white">
+                        <Button
+                          className="w-full bg-violet-600 hover:bg-violet-700 text-white"
+                          onClick={() => router.push(`/home?id=${cat.id}`)}
+                        >
                           View Details
                         </Button>
                       );
                     } else if (normalizedStatus === "adoption") {
                       return (
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                        <Button
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => router.push(`/home?id=${cat.id}`)}
+                        >
                           Contact for Adoption
                         </Button>
                       );
                     } else {
                       // found
                       return (
-                        <Button variant="outline" className="w-full">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => router.push(`/home?id=${cat.id}`)}
+                        >
                           Contact Finder
                         </Button>
                       );

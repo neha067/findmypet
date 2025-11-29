@@ -11,6 +11,7 @@ import { PanelRight } from 'lucide-react';
 import Social from "@/app/Social/page";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { useSearchParams } from "next/navigation";
 
 const MapView = dynamic(() => import("../../../components/ui/MapView"), {
   ssr: false,
@@ -42,6 +43,7 @@ export default function HomePage() {
   const [activeFilterState, setActiveFilterState] = useState(null);
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   // Filter state - lifted to parent to share with Social component
   const [filterState, setFilterState] = useState({
@@ -162,6 +164,13 @@ export default function HomePage() {
   useEffect(() => {
     setShowsidebar(false);
   }, [tabValue]);
+
+  // Switch to home tab if id query param is present
+  useEffect(() => {
+    if (searchParams.get("id")) {
+      setTabValue("home");
+    }
+  }, [searchParams]);
 
   const handleShowInMap = (petId: string, location: [number, number]) => {
     // Reset filters to ensure the pet is visible
