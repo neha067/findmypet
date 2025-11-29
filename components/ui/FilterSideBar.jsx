@@ -71,7 +71,11 @@ export default function FilterSideBar({ catData, map_center, filterCatData, togg
     }
   }
 
-  const [tabValue, setTabValue] = useState(null)
+  const [tabValue, setTabValue] = useState(curTab)
+
+  useEffect(() => {
+    setTabValue(curTab)
+  }, [curTab])
 
   // Apply filters automatically whenever filter values change
   useEffect(() => {
