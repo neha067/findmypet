@@ -158,3 +158,12 @@ nextjs-portal {
 [data-radix-portal] {
   z-index: 9999;
 }
+
+/* Utility to hide scrollbars (cross-browser) */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
