@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter, useSearchParams } from "next/navigation";
 import PostCard from "@/components/PostCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CreatePostForm from "./components/CreatePostForm";
@@ -26,12 +28,19 @@ interface Post {
   createdAt?: any;
   imageUrl?: string;
   description?: string;
+  reportedBy?: {
+    uid: string;
+    name: string;
+    email: string;
+    photo?: string;
+  };
 }
 
 interface FilterState {
   missingCatCheck: boolean;
   foundCatCheck: boolean;
   adoptionCheck: boolean;
+  socialCheck: boolean;
   petTypeFilter: "cat" | "dog" | "other" | null;
   colorFilter: string | null;
   ageFilter: string | null;
@@ -66,14 +75,18 @@ interface FoundPetData {
   foundMonth?: string;
   foundYear?: string;
   description?: string;
+  targetOwnerEmail?: string;
+  targetOwnerName?: string;
+  targetPostId?: string;
 }
 
 interface SocialProps {
   filterState?: FilterState;
   catData?: PetData[];
+  handleShowInMap?: (petId: string, location: [number, number]) => void;
 }
 
-const Social = ({ filterState, catData = [] }: SocialProps) => {
+const Social = ({ filterState, catData = [], handleShowInMap }: SocialProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("timeline");
@@ -83,6 +96,11 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
     gender: "",
     age: ""
   });
+  const { user } = useAuth();
+  const [showMyPosts, setShowMyPosts] = useState(false);
+  const searchParams = useSearchParams();
+  const postIdFromUrl = searchParams.get("id");
+  const router = useRouter();
 
   const changeTabToCreate = (data: any) => {
     console.log('pet', data);
@@ -97,13 +115,18 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
       foundDate: data?.foundDate || "",
       foundMonth: data?.foundMonth || "",
       foundYear: data?.foundYear || "",
-      description: data?.description || ""
+      description: data?.description || "",
+      targetOwnerEmail: data?.targetOwnerEmail || "",
+      targetOwnerName: data?.targetOwnerName || "",
+      targetPostId: data?.targetPostId || ""
     });
   }
 
   useEffect(() => {
     console.log('foundPetData', foundPetData);
-    setActiveTab("found")
+    if (foundPetData.petType) {
+      setActiveTab("found")
+    }
   }, [foundPetData])
 
   useEffect(() => {
@@ -118,6 +141,18 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
     }
 
     return posts.filter((post) => {
+      // Filter by 'My Posts' if active
+      if (showMyPosts) {
+        if (!user || !post.reportedBy || post.reportedBy.uid !== user.uid) {
+          return false;
+        }
+      }
+
+      // Filter by specific post ID if present in URL
+      if (postIdFromUrl) {
+        return post.id === postIdFromUrl;
+      }
+
       // Filter by pet type first (if filter is active)
       if (filterState.petTypeFilter) {
         // Get petType from post or linked cat
@@ -144,11 +179,11 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
         (filterState.missingCatCheck && post.type === "missing") ||
         (filterState.foundCatCheck && post.type === "found") ||
         (filterState.adoptionCheck && post.type === "adoption") ||
-        (post.type === "social"); // Social posts shown if any filter is active
+        (filterState.socialCheck && post.type === "social");
 
-      // If all status checkboxes are unchecked, only show social posts
+      // If all status checkboxes are unchecked, only show social posts if socialCheck is true
       if (!filterState.missingCatCheck && !filterState.foundCatCheck && !filterState.adoptionCheck) {
-        return post.type === "social";
+        return filterState.socialCheck && post.type === "social";
       }
 
       if (!typeMatches) {
@@ -261,6 +296,12 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
             >
               🐱 Create a Post
             </Button>
+            <Button
+              onClick={() => setShowMyPosts(!showMyPosts)}
+              className={`border justify-end border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 dark:active:bg-slate-600 text-slate-900 dark:text-slate-100 rounded-lg transition-colors text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 ${showMyPosts ? 'bg-violet-100 dark:bg-violet-900/30 border-violet-500 dark:border-violet-500' : 'bg-white dark:bg-slate-800'}`}
+            >
+              👤 My Posts
+            </Button>
             {/* <button
               onClick={() => setActiveTab("found")}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium"
@@ -278,11 +319,22 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                 </div>
               ) : filteredPosts.length > 0 ? (
                 <>
-                  {filterState && (filterState.missingCatCheck !== true || filterState.foundCatCheck !== true || filterState.adoptionCheck !== true || filterState.petTypeFilter || filterState.colorFilter || filterState.ageFilter) && (
+                  {filterState && (filterState.missingCatCheck !== true || filterState.foundCatCheck !== true || filterState.adoptionCheck !== true || filterState.socialCheck !== true || filterState.petTypeFilter || filterState.colorFilter || filterState.ageFilter) && (
                     <div className="w-full mb-2 px-3 py-2 bg-violet-100 dark:bg-violet-900/30 border border-violet-300 dark:border-violet-700 rounded-lg text-sm">
                       <span className="text-violet-800 dark:text-violet-200">
                         🔍 Showing {filteredPosts.length} of {posts.length} posts
                       </span>
+                    </div>
+                  )}
+                  {postIdFromUrl && (
+                    <div className="w-full mb-2 flex justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => router.push("/home")}
+                        className="bg-white dark:bg-slate-800"
+                      >
+                        Show All Posts
+                      </Button>
                     </div>
                   )}
                   {filteredPosts.map((p) => {
@@ -312,6 +364,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                         post={p}
                         changeTabToCreate={changeTabToCreate}
                         catData={catData}
+                        handleShowInMap={handleShowInMap}
                       />
                     );
                   })}
@@ -322,7 +375,7 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
                     No posts yet.
                   </p>
                   <p className="text-sm text-gray-400 dark:text-gray-500">
-                    Report a missing or found pet to start the timeline!
+                    Report a missing/found pet to start the timeline or post anything you want for your community!
                   </p>
                 </div>
               )}
@@ -334,13 +387,17 @@ const Social = ({ filterState, catData = [] }: SocialProps) => {
           {/* Make only the create form scrollable and hide native scrollbars */}
           <div className="w-full max-h-[calc(100vh-13rem)] overflow-auto scrollbar-hide">
             <CreatePostForm
+              onPostSuccess={() => setActiveTab("timeline")}
             />
           </div>
         </TabsContent>
 
         <TabsContent value="found" className="mt-4 dark:bg-slate-900/50 p-4 rounded-lg">
           <div className="w-full max-h-[calc(100vh-13rem)] overflow-auto scrollbar-hide">
-            <FoundForm foundPetData={foundPetData} />
+            <FoundForm
+              foundPetData={foundPetData}
+              onPostSuccess={() => setActiveTab("timeline")}
+            />
           </div>
         </TabsContent>
       </Tabs>

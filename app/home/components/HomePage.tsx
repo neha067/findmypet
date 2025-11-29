@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Header from "@/components/ui/Header.jsx";
 import FilterSideBar from "@/components/ui/FilterSideBar.jsx";
+import UsernameSetup from "@/components/UsernameSetup";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import SideBar from "./Sidebar.jsx";
@@ -40,12 +41,14 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [activeFilterState, setActiveFilterState] = useState(null);
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
+  const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
 
   // Filter state - lifted to parent to share with Social component
   const [filterState, setFilterState] = useState({
     missingCatCheck: true,
     foundCatCheck: true,
     adoptionCheck: true,
+    socialCheck: true,
     petTypeFilter: null as "cat" | "dog" | "other" | null,
     colorFilter: null as string | null,
     ageFilter: null as string | null,
@@ -160,6 +163,24 @@ export default function HomePage() {
     setShowsidebar(false);
   }, [tabValue]);
 
+  const handleShowInMap = (petId: string, location: [number, number]) => {
+    // Reset filters to ensure the pet is visible
+    setFilterState({
+      missingCatCheck: true,
+      foundCatCheck: true,
+      adoptionCheck: true,
+      socialCheck: true,
+      petTypeFilter: null,
+      colorFilter: null,
+      ageFilter: null,
+    });
+    setTabValue('map');
+    setMapCenter(location);
+    setSelectedPetId(petId);
+    // Reset selected pet ID after a delay to allow re-selection
+    setTimeout(() => setSelectedPetId(null), 2000);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
       <Header />
@@ -192,8 +213,9 @@ export default function HomePage() {
           />
         </div>
 
-        <section className="flex-1 px-4 md:px-0">
-          <div className="h-[calc(100vh-6rem-2rem)] flex flex-col gap-2">
+        <div className="flex-1 overflow-hidden relative">
+          <UsernameSetup />
+          <section className="h-full flex flex-col gap-2">
             {tabValue === 'map' ? (
               <div className="flex-1 gap-2 bg-white dark:bg-slate-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -230,7 +252,12 @@ export default function HomePage() {
                         </span>
                       </div>
                     )}
-                    <MapView map_center={mapCenter} catData={filteredData} updateMapCenter={updateMapCenter} />
+                    <MapView
+                      map_center={mapCenter}
+                      catData={filteredData}
+                      updateMapCenter={updateMapCenter}
+                      selectedPetId={selectedPetId}
+                    />
                   </>
                 )}
               </div>
@@ -248,12 +275,17 @@ export default function HomePage() {
                     Social Feed
                   </h1>
                 </div>
-                <Social filterState={filterState} catData={petData} />
+                <Social
+                  filterState={filterState}
+                  catData={petData}
+                  handleShowInMap={handleShowInMap}
+                />
               </div>
             )}
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     </div>
   );
 }
+

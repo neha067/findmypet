@@ -49,6 +49,7 @@ interface MapViewProps {
   map_center: [number, number];
   catData: PetData[];
   updateMapCenter: (coords: [number, number]) => void;
+  selectedPetId?: string | null;
 }
 
 // Component to handle map view updates
@@ -64,8 +65,9 @@ function MapController({ center }: { center: [number, number] }) {
   return null;
 }
 
-export default function MapViewUI({ map_center, catData, updateMapCenter }: MapViewProps) {
+export default function MapViewUI({ map_center, catData, updateMapCenter, selectedPetId }: MapViewProps) {
   const [mounted, setMounted] = useState(false);
+  const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
   // const [map, setMap] = useState<L.Map | null>(null);
   // const mapRef = useRef<L.Map | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,6 +150,18 @@ export default function MapViewUI({ map_center, catData, updateMapCenter }: MapV
     console.log("Sample pets:", catData.slice(0, 2).map(c => ({ id: c.id, name: c.name, petType: c.petType, status: c.status })));
   }, [catData]);
 
+  // Handle programmatic popup opening
+  useEffect(() => {
+    if (selectedPetId && markerRefs.current[selectedPetId]) {
+      const marker = markerRefs.current[selectedPetId];
+      if (marker) {
+        setTimeout(() => {
+          marker.openPopup();
+        }, 500); // Small delay to ensure map is ready
+      }
+    }
+  }, [selectedPetId, catData]);
+
   if (typeof window === "undefined" || !mounted) {
     return (
       <div className="h-[90%] w-full mt-2 rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse flex items-center justify-center">
@@ -157,7 +171,7 @@ export default function MapViewUI({ map_center, catData, updateMapCenter }: MapV
   }
 
   return (
-    <div className="h-[90%] w-full mt-2 rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700">
+    <div ref={mapWrapperRef} className="relative h-[80%] w-full mt-2 rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700">
       <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2 pointer-events-auto">
         <Button
           type="button"
@@ -224,25 +238,38 @@ export default function MapViewUI({ map_center, catData, updateMapCenter }: MapV
         {catData.map((cat) => (
           <Marker
             key={cat.id}
+            ref={(ref) => {
+              if (ref) {
+                markerRefs.current[cat.id] = ref;
+              }
+            }}
             position={cat.position}
             icon={
-              new L.Icon({
-                iconUrl: (() => {
+              new L.DivIcon({
+                className: 'custom-marker',
+                html: (() => {
                   const normalizedStatus = String(cat.status || "").toLowerCase().trim();
-                  if (normalizedStatus === "missing") {
-                    return "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png";
-                  } else if (normalizedStatus === "adoption") {
-                    return "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png";
-                  } else {
-                    // found
-                    return "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png";
-                  }
+                  let borderColor = '#3b82f6'; // blue (adoption)
+                  if (normalizedStatus === 'missing') borderColor = '#ef4444'; // red
+                  else if (normalizedStatus === 'found') borderColor = '#22c55e'; // green
+
+                  const imgHtml = cat.imageUrl && cat.imageUrl.trim()
+                    ? `<img src="${cat.imageUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />`
+                    : `<div style="width: 100%; height: 100%; background-color: ${borderColor}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">?</div>`;
+
+                  return `<div style="
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 50%;
+                    border: 3px solid ${borderColor};
+                    background: white;
+                    overflow: hidden;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                  ">${imgHtml}</div>`;
                 })(),
-                shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41],
+                iconSize: [60, 60],
+                iconAnchor: [30, 30],
+                popupAnchor: [0, -30],
               })
             }
           >

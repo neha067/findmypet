@@ -5,7 +5,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { PrimaryButton, OutlinedButton } from "@/components/ui/Buttons.jsx";
 import TextInput from "@/components/ui/TextInput.jsx";
-import { loginWithGoogle } from "@/lib/firebase";
+import { loginWithGoogle, auth, db } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "../../home/page";
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,10 @@ import { Button } from "@/components/ui/button";
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [emailOrUsername, setEmailOrUsername] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [loginLoading, setLoginLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
 
   useEffect(() => {
     if (user && !loading) {
@@ -27,6 +33,46 @@ export default function LoginPage() {
     } catch (error) {
       console.error("Login error:", error);
       alert("Failed to login. Please try again.");
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (!emailOrUsername || !password) return;
+
+    setLoginLoading(true);
+    setError("");
+    try {
+      let email = emailOrUsername;
+
+      // Check if input is a username (simple check: no @ symbol)
+      if (!email.includes("@")) {
+        console.log("Attempting to resolve username:", email);
+        const q = query(collection(db, "users"), where("username", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          console.error("Username not found in DB");
+          throw new Error("Username not found");
+        }
+
+        email = querySnapshot.docs[0].data().email;
+        console.log("Resolved username to email:", email);
+      }
+
+      console.log("Attempting sign in with:", email);
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log("Sign in successful");
+      router.push("/home");
+    } catch (error) {
+      console.error("Login error details:", error.code, error.message);
+      if (error.code === 'auth/invalid-credential' || error.message === "Username not found") {
+        setError("Invalid username/email or password");
+      } else {
+        setError("Failed to login. Please try again.");
+      }
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -88,43 +134,61 @@ export default function LoginPage() {
             Login to your FindMyPet account
           </p>
 
-          <div className="mt-6 space-y-4">
+          <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <TextInput
-              label="Email Address"
-              type="email"
-              placeholder="you@example.com"
-              disabled
+              label="Email"
+              type="text"
+              placeholder="you@example.com or username"
+              value={emailOrUsername}
+              onChange={(e) => {
+                setEmailOrUsername(e.target.value);
+                setError("");
+              }}
+              disabled={loginLoading}
             />
-            <TextInput
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              disabled
-            />
-
-            <Button className="w-full mt-2" disabled>
-              Login (Coming Soon)
-            </Button>
-
-            <div className="flex items-center gap-2 my-4">
-              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-              <span className="text-xs text-slate-500 dark:text-slate-400">OR</span>
-              <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            <div className="space-y-1">
+              <TextInput
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError("");
+                }}
+                disabled={loginLoading}
+              />
+              {error && (
+                <p className="text-sm text-red-500 dark:text-red-400">
+                  {error}
+                </p>
+              )}
             </div>
 
-            <OutlinedButton
-              className="w-full flex items-center justify-center gap-2"
-              onClick={handleGoogleLogin}
-            >
-              <Image
-                src="/assets/Googlebtn/logogoogle.png"
-                width={20}
-                height={20}
-                alt="Google logo"
-              />
-              Continue with Google
-            </OutlinedButton>
+            <Button className="w-full mt-2" disabled={loginLoading || !emailOrUsername || !password}>
+              {loginLoading ? "Logging in..." : "Login"}
+            </Button>
+          </form>
+
+          <div className="flex items-center gap-2 my-4">
+            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            <span className="text-xs text-slate-500 dark:text-slate-400">OR</span>
+            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
           </div>
+
+          <OutlinedButton
+            className="w-full flex items-center justify-center gap-2"
+            onClick={handleGoogleLogin}
+          >
+            <Image
+              src="/assets/Googlebtn/logogoogle.png"
+              width={20}
+              height={20}
+              alt="Google logo"
+            />
+            Continue with Google
+          </OutlinedButton>
+
 
           <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
             Don&apos;t have an account?{" "}
@@ -134,6 +198,6 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

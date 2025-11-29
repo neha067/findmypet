@@ -30,12 +30,25 @@ import type { LatLngTuple } from "leaflet";
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
 });
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-const CreatePostForm = () => {
-  const { user } = useAuth();
+interface CreatePostFormProps {
+  onPostSuccess?: () => void;
+}
+
+const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
+  const { user, username } = useAuth();
   const router = useRouter();
   // const map_center: LatLngTuple = [12.9716, 77.5946];
   const [loading, setLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     petType: "" as "cat" | "dog" | "other" | "",
@@ -205,7 +218,7 @@ const CreatePostForm = () => {
           imageUrl: imageUrl,
           reportedBy: {
             uid: user.uid,
-            name: user.displayName || "Anonymous",
+            name: username || user.displayName || "Anonymous",
             email: user.email || "",
             photo: user.photoURL || null,
           },
@@ -222,16 +235,39 @@ const CreatePostForm = () => {
       // Create a post for the social feed
       try {
         const postsRef = collection(db, "posts");
+
+        // Generate a descriptive title for non-social posts
+        let postTitle = `Tag: ${formData.postType}`;
+        if (formData.postType !== 'social') {
+          const features = [
+            formData.color,
+            formData.age,
+            formData.gender,
+            formData.petType
+          ].filter(Boolean).join(' ');
+
+          // Capitalize first letter of post type
+          const capitalizedType = formData.postType.charAt(0).toUpperCase() + formData.postType.slice(1);
+
+          postTitle = `${capitalizedType}: ${features}`;
+          if (formData.name) {
+            postTitle += ` - ${formData.name}`;
+          }
+
+          // Capitalize the whole title words for better readability
+          postTitle = postTitle.replace(/\b\w/g, l => l.toUpperCase());
+        }
+
         await addDoc(postsRef, {
-          title: `Tag: ${formData.postType}`,
+          title: postTitle,
           type: formData.postType,
           petType: formData.petType,
           catId: petDocRef.id,
-          description: formData.description || ` ${formData.color} ${formData.petType || "pet"} named ${formData.name}`,
+          description: formData.description,
           imageUrl: imageUrl,
           reportedBy: {
             uid: user.uid,
-            name: user.displayName || "Anonymous",
+            name: username || user.displayName || "Anonymous",
             email: user.email || "",
             photo: user.photoURL || null,
           },
@@ -247,7 +283,8 @@ const CreatePostForm = () => {
       // Reset loading state first
       setLoading(false);
 
-      alert("Posted successfully!");
+      // Show success dialog
+      setShowSuccessDialog(true);
 
       // Reset form
       setFormData({
@@ -270,10 +307,6 @@ const CreatePostForm = () => {
       // Clear timeout since submission succeeded
       clearTimeout(timeoutId);
 
-      // Redirect to home after a brief delay to ensure state is updated
-      setTimeout(() => {
-        router.push("/home");
-      }, 100);
     } catch (error: any) {
       console.error("Error reporting missing cat:", error);
       clearTimeout(timeoutId); // Clear timeout on error
@@ -704,7 +737,43 @@ const CreatePostForm = () => {
           </div>
         </FieldGroup>
       </form>
-    </div>
+
+      <Dialog open={showSuccessDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowSuccessDialog(false);
+          if (onPostSuccess) {
+            onPostSuccess();
+          } else {
+            router.push("/home");
+          }
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Posted Successfully! 🎉</DialogTitle>
+            <DialogDescription className="text-center">
+              Your post has been created and is now visible to the community.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setShowSuccessDialog(false);
+                if (onPostSuccess) {
+                  onPostSuccess();
+                } else {
+                  router.push("/home");
+                }
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div >
   );
 };
 

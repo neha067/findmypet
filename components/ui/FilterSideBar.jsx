@@ -8,7 +8,7 @@ import AgePill from "../ui/AgePill.jsx";
 import { useEffect, useState } from "react"
 import { BookmarkIcon, HeartIcon, StarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button";
-import { ClipboardPlus,Funnel } from 'lucide-react';
+import { ClipboardPlus, Funnel } from 'lucide-react';
 import { FlagTriangleRight } from 'lucide-react';
 import {
   InputGroup,
@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label"
 import { Bold, Italic, Underline } from "lucide-react"
 import { House } from 'lucide-react';
 import { MapPinned } from 'lucide-react';
-export default function FilterSideBar({catData,map_center,filterCatData,toggleHideSidebar,changeTabValue,curTab,filterState,setFilterState}) {
+export default function FilterSideBar({ catData, map_center, filterCatData, toggleHideSidebar, changeTabValue, curTab, filterState, setFilterState }) {
   // Use filterState from props if provided, otherwise use local state
   const missingCatCheck = filterState?.missingCatCheck ?? true
   const foundCatCheck = filterState?.foundCatCheck ?? true
@@ -33,7 +33,8 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
   const petTypeFilter = filterState?.petTypeFilter ?? null
   const colorFilter = filterState?.colorFilter ?? null
   const ageFilter = filterState?.ageFilter ?? null
-  
+  const socialCheck = filterState?.socialCheck ?? true
+
   const setMissingCatCheck = (value) => {
     if (setFilterState) {
       setFilterState(prev => ({ ...prev, missingCatCheck: value }))
@@ -47,6 +48,11 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
   const setAdoptionCheck = (value) => {
     if (setFilterState) {
       setFilterState(prev => ({ ...prev, adoptionCheck: value }))
+    }
+  }
+  const setSocialCheck = (value) => {
+    if (setFilterState) {
+      setFilterState(prev => ({ ...prev, socialCheck: value }))
     }
   }
   const setColorFilterValue = (value) => {
@@ -64,13 +70,13 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
       setFilterState(prev => ({ ...prev, petTypeFilter: value === petTypeFilter ? null : value }))
     }
   }
-  
+
   const [tabValue, setTabValue] = useState(null)
-  
+
   // Apply filters automatically whenever filter values change
   useEffect(() => {
     if (!catData || catData.length === 0) return;
-    
+
     // Use a ref or flag to prevent infinite loops
     const items = Array.isArray(catData) ? catData : []
 
@@ -85,16 +91,16 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
 
       // Normalize status to lowercase for comparison (new schema uses lowercase)
       const normalizedStatus = String(item.status || "").toLowerCase().trim();
-      const statusMatches = 
-        (missingCatCheck && normalizedStatus === "missing") || 
+      const statusMatches =
+        (missingCatCheck && normalizedStatus === "missing") ||
         (foundCatCheck && normalizedStatus === "found") ||
         (adoptionCheck && normalizedStatus === "adoption");
-      
+
       // If all checkboxes are unchecked, show nothing
       if (!missingCatCheck && !foundCatCheck && !adoptionCheck) {
         return false;
       }
-      
+
       if (!statusMatches) {
         return false;
       }
@@ -116,7 +122,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
         }
         const itemAge = String(item.age).toLowerCase().trim();
         const filterAge = String(ageFilter).toLowerCase().trim();
-        
+
         if (itemAge !== filterAge) {
           if (filterAge === "adult" && itemAge === "senior") {
             // Senior cats are included in adult filter
@@ -133,8 +139,8 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
       filterCatData(filtered);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [missingCatCheck, foundCatCheck, adoptionCheck, petTypeFilter, colorFilter, ageFilter, catData?.length]);
-  
+  }, [missingCatCheck, foundCatCheck, adoptionCheck, socialCheck, petTypeFilter, colorFilter, ageFilter, catData?.length]);
+
   const handlefilter = (e) => {
     // Prevent any default behavior
     if (e) {
@@ -172,16 +178,16 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
         }
       }
 
-      const statusMatches = 
-        (missingCatCheck && normalizedStatus === "missing") || 
+      const statusMatches =
+        (missingCatCheck && normalizedStatus === "missing") ||
         (foundCatCheck && normalizedStatus === "found") ||
         (adoptionCheck && normalizedStatus === "adoption");
-      
+
       // If all checkboxes are unchecked, show nothing
       if (!missingCatCheck && !foundCatCheck && !adoptionCheck) {
         return false;
       }
-      
+
       // If status doesn't match checked filters, exclude it
       if (!statusMatches) {
         return false;
@@ -206,7 +212,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
         }
         const itemAge = String(item.age).toLowerCase().trim();
         const filterAge = String(ageFilter).toLowerCase().trim();
-        
+
         // Direct match for exact age values
         if (itemAge !== filterAge) {
           // Handle special case: "senior" should match "adult" filter
@@ -247,30 +253,30 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
     }
   }
   useEffect(() => {
-    console.log('tabval in chd',typeof(tabValue));
-    if(tabValue === null)return
-    if(tabValue !== 'filter' && tabValue !== curTab)
-    changeTabValue(tabValue)
-  },[tabValue])
+    console.log('tabval in chd', typeof (tabValue));
+    if (tabValue === null) return
+    if (tabValue !== 'filter' && tabValue !== curTab)
+      changeTabValue(tabValue)
+  }, [tabValue])
   return (
     <aside className="w-full md:w-52 border-r border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/80 backdrop-blur-sm relative">
       <div className="h-full overflow-y-auto px-2 py-3 space-y-3 pb-20 text-slate-900 dark:text-slate-100">
 
         <div className="w-full flex items-start flex-col gap-2">
-           <ToggleGroup className="w-full flex items-start flex-col gap-1" type="single" value={tabValue} onValueChange={setTabValue}>
+          <ToggleGroup className="w-full flex items-start flex-col gap-1" type="single" value={tabValue} onValueChange={setTabValue}>
             <ToggleGroupItem disabled={'home' === curTab} className="w-full justify-start px-2 py-2 text-left" value="home">
-              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><House className="w-4 h-4"/> Home</span>
+              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><House className="w-4 h-4" /> Home</span>
             </ToggleGroupItem>
             <ToggleGroupItem disabled={'map' === curTab} className="w-full justify-start px-2 py-2 text-left" value="map">
-              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><MapPinned className="w-4 h-4"/> Map Explorer</span>
+              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><MapPinned className="w-4 h-4" /> Map Explorer</span>
             </ToggleGroupItem>
             <ToggleGroupItem disabled={true} className="w-full justify-start px-2 py-2 text-left" value="filter">
-              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><Funnel className="w-4 h-4"/> Apply Filters</span>
+              <span className="w-full inline-flex items-center gap-2 text-slate-900 dark:text-slate-100"><Funnel className="w-4 h-4" /> Apply Filters</span>
             </ToggleGroupItem>
           </ToggleGroup>
-        
-           
-           {/* <Button className="w-full"><ClipboardPlus /> Report Found</Button> */}
+
+
+          {/* <Button className="w-full"><ClipboardPlus /> Report Found</Button> */}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -278,7 +284,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
             <Funnel w-2 h-2/>
             <FilterLabel>Apply Filters</FilterLabel>
           </div> */}
-           {/* <ToggleGroup className="w-full flex items-start flex-col gap-3" type="single" value={colorFilter} onValueChange={setColorFilter}>
+          {/* <ToggleGroup className="w-full flex items-start flex-col gap-3" type="single" value={colorFilter} onValueChange={setColorFilter}>
             <ToggleGroupItem className="w-full justify-start px-2 py-2 text-left" value="Home">
               <span className="w-full inline-flex items-center gap-2"><Funnel className="w-4 h-4"/> Apply Filters</span>
             </ToggleGroupItem>
@@ -295,16 +301,20 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
         <div className="flex flex-col gap-3">
           <FilterLabel>Status</FilterLabel>
           <div className="flex gap-1">
-            <Checkbox checked={missingCatCheck} onCheckedChange={() => setMissingCatCheck(!missingCatCheck)}/>
+            <Checkbox checked={missingCatCheck} onCheckedChange={() => setMissingCatCheck(!missingCatCheck)} />
             <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Missing Pets</Label>
           </div>
           <div className="flex gap-1">
-            <Checkbox checked={foundCatCheck} onCheckedChange={() => setFoundCatCheck(!foundCatCheck)}/>
+            <Checkbox checked={foundCatCheck} onCheckedChange={() => setFoundCatCheck(!foundCatCheck)} />
             <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Found Pets</Label>
           </div>
           <div className="flex gap-1">
-            <Checkbox checked={adoptionCheck} onCheckedChange={() => setAdoptionCheck(!adoptionCheck)}/>
+            <Checkbox checked={adoptionCheck} onCheckedChange={() => setAdoptionCheck(!adoptionCheck)} />
             <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Adoption</Label>
+          </div>
+          <div className="flex gap-1">
+            <Checkbox checked={socialCheck} onCheckedChange={() => setSocialCheck(!socialCheck)} />
+            <Label htmlFor="toggle" className="text-slate-700 dark:text-slate-200">Social Posts</Label>
           </div>
         </div>
 
@@ -331,11 +341,13 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
           <FilterLabel>Age</FilterLabel>
           <div className="mt-2 space-y-2">
             <ToggleGroup type="single" value={ageFilter} onValueChange={setAgeFilterValue} className="flex flex-wrap gap-">
-            <ToggleGroupItem value="kitten" className="dark:text-slate-200">Kitten (0–1 yr)</ToggleGroupItem>
-            <ToggleGroupItem value="young" className="dark:text-slate-200">Young (1–3 yrs)</ToggleGroupItem>
-            <ToggleGroupItem value="adult" className="dark:text-slate-200">Adult (3+ yrs)</ToggleGroupItem>
-            <ToggleGroupItem value="senior" className="dark:text-slate-200">Senior (7+ yrs)</ToggleGroupItem>
-          </ToggleGroup>
+              <ToggleGroupItem value="kitten" className="dark:text-slate-200">
+                {petTypeFilter === 'dog' ? 'Puppy (0–1 yr)' : 'Kitten (0–1 yr)'}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="young" className="dark:text-slate-200">Young (1–3 yrs)</ToggleGroupItem>
+              <ToggleGroupItem value="adult" className="dark:text-slate-200">Adult (3+ yrs)</ToggleGroupItem>
+              <ToggleGroupItem value="senior" className="dark:text-slate-200">Senior (7+ yrs)</ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </div>
         <div className="flex gap-2 mt-6 sticky bottom-0 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm py-2 -mx-2 px-2 z-10">
@@ -351,6 +363,7 @@ export default function FilterSideBar({catData,map_center,filterCatData,toggleHi
                   missingCatCheck: true,
                   foundCatCheck: true,
                   adoptionCheck: true,
+                  socialCheck: true,
                   petTypeFilter: null,
                   colorFilter: null,
                   ageFilter: null,

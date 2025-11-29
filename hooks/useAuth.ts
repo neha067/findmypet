@@ -1,12 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchUserData = useCallback(async (uid: string) => {
+    if (!db) return;
+    try {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        setUsername(userDoc.data().username);
+      } else {
+        setUsername(null);
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  }, []);
 
   useEffect(() => {
     // Only run on client side
@@ -19,8 +35,15 @@ export function useAuth() {
       return;
     }
 
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
+
+      if (currentUser) {
+        await fetchUserData(currentUser.uid);
+      } else {
+        setUsername(null);
+      }
+
       setLoading(false);
       if (currentUser && typeof window !== "undefined") {
         try {
@@ -45,6 +68,6 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
-  return { user, loading };
+  return { user, username, loading, refreshUser: () => user && fetchUserData(user.uid) };
 }
 

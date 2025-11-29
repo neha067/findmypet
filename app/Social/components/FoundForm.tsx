@@ -29,6 +29,14 @@ const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
 });
 // No need to import default image functions - we use icons instead
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface FoundPetData {
   petType: "cat" | "dog" | "other" | "";
@@ -42,12 +50,16 @@ interface FoundPetData {
   foundMonth?: string;
   foundYear?: string;
   description?: string;
+  targetOwnerEmail?: string;
+  targetOwnerName?: string;
+  targetPostId?: string;
 }
 
-const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
-  const { user } = useAuth();
+const FoundForm = ({ foundPetData, onPostSuccess }: { foundPetData: FoundPetData; onPostSuccess?: () => void }) => {
+  const { user, username } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     petType: "" as "cat" | "dog" | "other" | "",
@@ -216,7 +228,7 @@ const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
           imageUrl: imageUrl,
           reportedBy: {
             uid: user.uid,
-            name: user.displayName || "Anonymous",
+            name: username || user.displayName || "Anonymous",
             email: user.email || "",
             photo: user.photoURL || null,
           },
@@ -231,9 +243,10 @@ const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
       }
 
       // Create a post for the social feed
+      let newPostId = "";
       try {
         const postsRef = collection(db, "posts");
-        await addDoc(postsRef, {
+        const postDocRef = await addDoc(postsRef, {
           title: `Found: ${formData.color} ${formData.petType || "pet"}`,
           type: "found",
           petType: formData.petType,
@@ -242,13 +255,13 @@ const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
           imageUrl: imageUrl,
           reportedBy: {
             uid: user.uid,
-            name: user.displayName || "Anonymous",
+            name: username || user.displayName || "Anonymous",
             email: user.email || "",
             photo: user.photoURL || null,
           },
           createdAt: serverTimestamp(),
-          likeCount: 0,
         });
+        newPostId = postDocRef.id;
       } catch (postError: any) {
         console.error("Error creating post:", postError);
         // Don't throw - cat was already saved, just log the error
@@ -258,7 +271,8 @@ const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
       // Reset loading state first
       setLoading(false);
 
-      alert("Found pet reported successfully!");
+      // Show success dialog
+      setShowSuccessDialog(true);
 
       // Reset form
       setFormData({
@@ -279,10 +293,57 @@ const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
       // Clear timeout since submission succeeded
       clearTimeout(timeoutId);
 
-      // Redirect to home after a brief delay to ensure state is updated
-      setTimeout(() => {
-        router.push("/home");
-      }, 100);
+      // Send email to the missing pet owner if applicable
+      if (foundPetData.targetOwnerEmail) {
+        try {
+          // Add comment to the missing post if targetPostId exists
+          const postLink = `${window.location.origin}/home?id=${newPostId}`;
+          if (foundPetData.targetPostId) {
+            const commentsRef = collection(db, "posts", foundPetData.targetPostId, "comments");
+            await addDoc(commentsRef, {
+              userId: user.uid,
+              userName: username || user.displayName || "Anonymous",
+              userPhoto: user.photoURL || "",
+              text: `Is this your pet? I reported a found pet that matches. Please check the timeline! ${postLink}`,
+              createdAt: serverTimestamp(),
+            });
+          }
+
+          const subject = `Potential Match Found: ${formData.color} ${formData.petType}`;
+          const body = `
+            <p>Hello ${foundPetData.targetOwnerName || "Pet Owner"},</p>
+            <p>A user has reported a found pet that might match your missing pet.</p>
+            <h3>Details of Found Pet:</h3>
+            <ul>
+              <li><strong>Type:</strong> ${formData.petType}</li>
+              <li><strong>Color:</strong> ${formData.color}</li>
+              <li><strong>Location:</strong> ${formData.location}</li>
+              <li><strong>Description:</strong> ${formData.description}</li>
+            </ul>
+            <p><strong>Is this your pet?</strong></p>
+            <p>You can view the full report here: <a href="${postLink}">${postLink}</a></p>
+            <p>Reported by: ${username || user.displayName || "Anonymous"} (${user.email})</p>
+            <p>Please check the app for more details.</p>
+          `;
+
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: foundPetData.targetOwnerEmail,
+              subject: subject,
+              html: body,
+            }),
+          });
+          console.log("Notification email sent to missing pet owner.");
+        } catch (emailError) {
+          console.error("Error sending notification email:", emailError);
+          // Don't block success flow
+        }
+      }
+
     } catch (error: any) {
       console.error("Error reporting found cat:", error);
       clearTimeout(timeoutId); // Clear timeout on error
@@ -290,6 +351,8 @@ const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
 
       // Provide more detailed error message
       const errorMessage = error.message || "Unknown error occurred";
+      // Send email to the missing pet owner if applicable
+
       alert(`Failed to report found pet: ${errorMessage}\n\nPlease check your connection and try again.`);
     }
   };
@@ -586,6 +649,47 @@ const FoundForm = ({ foundPetData }: { foundPetData: FoundPetData }) => {
           </div>
         </FieldGroup>
       </form>
+
+      <Dialog open={showSuccessDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowSuccessDialog(false);
+          if (onPostSuccess) {
+            onPostSuccess();
+          } else {
+            router.push("/home");
+          }
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Reported Successfully! 🎉</DialogTitle>
+            <DialogDescription className="text-center">
+              Thank you for helping! The found pet has been reported and is now visible on the map.
+              {foundPetData?.targetOwnerEmail && (
+                <span className="block mt-2 text-blue-600 dark:text-blue-400">
+                  We have also notified the owner of the missing pet about your report.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setShowSuccessDialog(false);
+                if (onPostSuccess) {
+                  onPostSuccess();
+                } else {
+                  router.push("/home");
+                }
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
