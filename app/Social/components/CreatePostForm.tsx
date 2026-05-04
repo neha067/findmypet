@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -66,6 +66,17 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
     image: null as File | null,
     postType: ""
   });
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<ImageAnalysis | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  type ImageAnalysis = {
+    animal: "cat" | "dog" | "unknown";
+    breed: string;
+    color: string;
+    age_estimate: "young" | "adult" | "old";
+    confidence: number;
+  };
 
   const handleInputChange = (field: string, value: string | File | null) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -76,6 +87,60 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
         delete newErrors[field];
         return newErrors;
       });
+    }
+  };
+  const handleAutofill = async(file: File | null) => {
+    if (!file) return;
+
+    setAnalyzing(true);
+    setAnalysisResult(null);
+    setAnalysisError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/analyze-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Analysis failed');
+      }
+
+      const analysis: ImageAnalysis = await response.json();
+      setAnalysisResult(analysis);
+
+      if (analysis.animal !== "unknown") {
+        handleInputChange("petType", analysis.animal);
+      }
+      if (analysis.color) {
+        handleInputChange("color", analysis.color);
+      }
+      if (analysis.age_estimate) {
+        const ageMap: Record<string, string> = {
+          young: analysis.animal === "cat" ? "kitten" : analysis.animal === "dog" ? "puppy" : "young",
+          adult: "adult",
+          old: "senior",
+        };
+        handleInputChange("age", ageMap[analysis.age_estimate] || "unknown");
+      }
+      // Auto-fill gender as "unknown" since API doesn't provide it
+      handleInputChange("gender", "unknown");
+      
+      // Add breed info to description if available
+      if (analysis.breed && analysis.breed !== "unknown") {
+        const breedInfo = `Breed: ${analysis.breed}. `;
+        const currentDescription = "";
+        handleInputChange("description", breedInfo + currentDescription);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+      setAnalysisError(errorMessage);
+      console.error("Image analysis failed:", err);
+    } finally {
+      setAnalyzing(false);
     }
   };
   const [mapCenter, setMapCenter] = useState<[number, number]>([12.9716, 77.5946]);
@@ -380,8 +445,92 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
               {formData.postType !== 'social' ?
 
                 <>
+                  {/* Pet Name */}
+                  <Field>
+                    <FieldLabel htmlFor="pet-name">
+                      {formData.postType === 'missing' ? 'Pet Name *' : 'Pet Name (Optional)'}
+                    </FieldLabel>
+                    <Input
+                      id="pet-name"
+                      placeholder={formData.petType === "dog" ? "e.g., Max, Bella, Buddy..." : formData.petType === "other" ? "e.g., Birdy, Rabbit..." : "e.g., Whiskers, Luna, Tuna..."}
+                      value={formData.name}
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      required={formData.postType === 'missing'}
+                      className={errors.name ? "border-red-500 border-2" : ""}
+                    />
+                    {errors.name && (
+                      <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                    )}
+                  </Field>
 
-                  {/* Pet Type */}
+                  {/* Image Upload */}
+                  <Field>
+                    <FieldLabel htmlFor="image">Photo</FieldLabel>
+                    <Input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        handleInputChange("image", file);
+                        setAnalysisError(null);
+                        setAnalysisResult(null);
+                        handleAutofill(file)
+                      }}
+                    />
+                    {formData.image && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Selected: {formData.image.name}
+                      </p>
+                    )}
+                    {!formData.image && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        No photo selected. A default image will be used based on pet type.
+                      </p>
+                    )}
+                  </Field>
+
+                  {/* AI Analysis Status */}
+                {analyzing && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-blue-600">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    Analyzing image...
+                  </div>
+                )}
+                 {!analyzing && analysisResult && (
+                  <div className="flex items-start justify-between mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+                    <div>
+                      <span className="font-medium">✨ AI autofilled:</span>{" "}
+                      {analysisResult.breed !== "unknown" && <span>{analysisResult.breed} · </span>}
+                      <span>{Math.round(analysisResult.confidence * 100)}% confident</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-green-600 hover:text-green-900 ml-2 font-bold"
+                      onClick={() => setAnalysisResult(null)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                {!analyzing && analysisError && (
+              <div className="flex items-start justify-between mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+                <div>
+                  <span className="font-medium">⚠ Analysis failed:</span> {analysisError}
+                </div>
+                <button
+                  type="button"
+                  className="text-red-600 hover:text-red-900 ml-2 font-bold"
+                  onClick={() => setAnalysisError(null)}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+             {/* Pet Type */}
                   <Field>
                     <FieldLabel htmlFor="pet-type">Pet Type *</FieldLabel>
                     <Select
@@ -403,24 +552,6 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
                     </Select>
                     {errors.petType && (
                       <p className="text-red-500 text-sm mt-1">{errors.petType}</p>
-                    )}
-                  </Field>
-
-                  {/* Pet Name */}
-                  <Field>
-                    <FieldLabel htmlFor="pet-name">
-                      {formData.postType === 'missing' ? 'Pet Name *' : 'Pet Name (Optional)'}
-                    </FieldLabel>
-                    <Input
-                      id="pet-name"
-                      placeholder={formData.petType === "dog" ? "e.g., Max, Bella, Buddy..." : formData.petType === "other" ? "e.g., Birdy, Rabbit..." : "e.g., Whiskers, Luna, Tuna..."}
-                      value={formData.name}
-                      onChange={(e) => handleInputChange("name", e.target.value)}
-                      required={formData.postType === 'missing'}
-                      className={errors.name ? "border-red-500 border-2" : ""}
-                    />
-                    {errors.name && (
-                      <p className="text-red-500 text-sm mt-1">{errors.name}</p>
                     )}
                   </Field>
 
@@ -647,30 +778,9 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
                     )}
                   </Field>
 
-                  {/* Image Upload */}
-                  <Field>
-                    <FieldLabel htmlFor="image">Photo (Optional)</FieldLabel>
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null;
-                        handleInputChange("image", file);
-                      }}
-                    />
-                    {formData.image && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        Selected: {formData.image.name}
-                      </p>
-                    )}
-                    {!formData.image && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        No photo selected. A default image will be used based on pet type.
-                      </p>
-                    )}
-                  </Field>
-
+                  
+                
+               
                 </>
                 :
 
