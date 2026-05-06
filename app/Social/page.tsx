@@ -9,6 +9,7 @@ import PostCard from "@/components/PostCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CreatePostForm from "./components/CreatePostForm";
 import FoundForm from "./components/FoundForm";
+import SearchPetForm from "./components/SearchPetForm";
 import { Button } from "@/components/ui/button";
 import {
   Tabs,
@@ -96,6 +97,7 @@ const SocialContent = ({ filterState, catData = [], handleShowInMap }: SocialPro
     gender: "",
     age: ""
   });
+  const [searchResults, setSearchResults] = useState<any | null>(null);
   const { user } = useAuth();
   const [showMyPosts, setShowMyPosts] = useState(false);
   const searchParams = useSearchParams();
@@ -121,6 +123,60 @@ const SocialContent = ({ filterState, catData = [], handleShowInMap }: SocialPro
       targetPostId: data?.targetPostId || ""
     });
   }
+
+  const handleSearch = (searchParams: any) => {
+    setSearchResults(searchParams);
+  }
+
+  const matchingSearchPosts: Post[] | null =
+    Array.isArray(searchResults?.similarPostIds) && searchResults.similarPostIds.length > 0
+      ? (searchResults.similarPostIds as string[])
+          .map((postId) => posts.find((post) => post.id === postId))
+          .filter((post): post is Post => Boolean(post))
+      : null;
+
+  const attributeFilteredSearchPosts: Post[] = posts.filter((p) => {
+    if (!searchResults) {
+      return false;
+    }
+
+    if (searchResults.animal && searchResults.animal !== "unknown") {
+      let postPetType = p.petType;
+      if (!postPetType && p.catId && catData.length > 0) {
+        const pet = catData.find((c) => c.id === p.catId);
+        postPetType = pet?.petType;
+      }
+      const postType = String(postPetType || "").toLowerCase().trim();
+      const searchType = String(searchResults.animal).toLowerCase().trim();
+      if (postType !== searchType) return false;
+    }
+
+    if (searchResults.color) {
+      if (p.catId && catData.length > 0) {
+        const pet = catData.find((c) => c.id === p.catId);
+        if (!pet?.color || String(pet.color).toLowerCase().trim() !== String(searchResults.color).toLowerCase().trim()) {
+          return false;
+        }
+      }
+    }
+
+    if (searchResults.age && searchResults.age !== "unknown") {
+      if (p.catId && catData.length > 0) {
+        const pet = catData.find((c) => c.id === p.catId);
+        if (!pet?.age) return false;
+        const petAge = String(pet.age).toLowerCase().trim();
+        const searchAge = String(searchResults.age).toLowerCase().trim();
+        if (petAge !== searchAge) return false;
+      }
+    }
+
+    return true;
+  });
+
+  const searchResultPosts: Post[] =
+    matchingSearchPosts && matchingSearchPosts.length > 0
+      ? matchingSearchPosts
+      : attributeFilteredSearchPosts;
 
   useEffect(() => {
     console.log('foundPetData', foundPetData);
@@ -290,6 +346,7 @@ const SocialContent = ({ filterState, catData = [], handleShowInMap }: SocialPro
         <TabsList className="grid w-[70%] grid-cols-3 dark:bg-slate-800 dark:text-slate-100 ">
           <TabsTrigger value="timeline" className="cursor-pointer dark:data-[state=active]:bg-slate-700 dark:data-[state=inactive]:text-slate-400">Timeline</TabsTrigger>
           <TabsTrigger value="create" className="cursor-pointer dark:data-[state=active]:bg-slate-700 dark:data-[state=inactive]:text-slate-400">Create a Post</TabsTrigger>
+          <TabsTrigger value="search" className="cursor-pointer dark:data-[state=active]:bg-slate-700 dark:data-[state=inactive]:text-slate-400">Search</TabsTrigger>
           {/* <TabsTrigger value="found">Report Found</TabsTrigger> */}
         </TabsList>
 
@@ -396,6 +453,111 @@ const SocialContent = ({ filterState, catData = [], handleShowInMap }: SocialPro
             <CreatePostForm
               onPostSuccess={() => setActiveTab("timeline")}
             />
+          </div>
+        </TabsContent>
+         <TabsContent value="search" className="mt-4 dark:bg-slate-900/50 p-4 rounded-lg">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100vh-13rem)]">
+            {/* Search Form - Left Side */}
+            <div className="lg:col-span-2 overflow-auto">
+              <SearchPetForm onSearch={handleSearch} />
+            </div>
+            
+            {/* Results - Right Side */}
+            <div className="lg:col-span-2 overflow-auto">
+              {searchResults ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+                    <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                      Search Filters Applied
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {searchResults.animal && (
+                        <div>
+                          <p className="text-blue-700 dark:text-blue-300 font-medium">Type</p>
+                          <p className="text-blue-900 dark:text-blue-100 capitalize">
+                            {searchResults.animal}
+                          </p>
+                        </div>
+                      )}
+                      {searchResults.color && (
+                        <div>
+                          <p className="text-blue-700 dark:text-blue-300 font-medium">Color</p>
+                          <p className="text-blue-900 dark:text-blue-100 capitalize">
+                            {searchResults.color}
+                          </p>
+                        </div>
+                      )}
+                      {searchResults.age && (
+                        <div>
+                          <p className="text-blue-700 dark:text-blue-300 font-medium">Age</p>
+                          <p className="text-blue-900 dark:text-blue-100 capitalize">
+                            {searchResults.age}
+                          </p>
+                        </div>
+                      )}
+                      {searchResults.confidence && (
+                        <div>
+                          <p className="text-blue-700 dark:text-blue-300 font-medium">Confidence</p>
+                          <p className="text-blue-900 dark:text-blue-100">
+                            {Math.round(searchResults.confidence * 100)}%
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setSearchResults(null)}
+                      className="mt-3 w-full dark:bg-slate-800"
+                    >
+                      Clear Search
+                    </Button>
+                  </div>
+
+                  {/* Matching Posts */}
+                  <div>
+                    <h3 className="font-semibold mb-3 text-slate-900 dark:text-slate-100">
+                      Similar Pets Found
+                    </h3>
+                    <div className="space-y-3">
+                      {searchResultPosts.map((p) => {
+                        let petType: "cat" | "dog" | "other" | undefined = undefined;
+                        if (p.petType && (p.petType === "cat" || p.petType === "dog" || p.petType === "other")) {
+                          petType = p.petType;
+                        } else if (p.catId && catData.length > 0) {
+                          const linkedPet = catData.find((c) => c.id === p.catId);
+                          if (linkedPet?.petType && (linkedPet.petType === "cat" || linkedPet.petType === "dog" || linkedPet.petType === "other")) {
+                            petType = linkedPet.petType;
+                          }
+                        }
+
+                        return (
+                          <PostCard
+                            key={p.id}
+                            postId={p.id}
+                            title={p.title || "Untitled Post"}
+                            imageUrl={p.imageUrl}
+                            petType={petType}
+                            post={p}
+                            changeTabToCreate={changeTabToCreate}
+                            catData={catData}
+                            handleShowInMap={handleShowInMap}
+                          />
+                        );
+                      })}
+                    </div>
+                    {searchResultPosts.length === 0 && (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <p>No posts match your search criteria.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-center text-gray-500 dark:text-gray-400">
+                  <p>similar posts will appear here</p>
+                </div>
+              )}
+            </div>
           </div>
         </TabsContent>
 

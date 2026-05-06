@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_MAIL_PROVIDER);
+const resend = new Resend(process.env.RESEND_MAIL_PROVIDER);
 
 export async function POST(request: Request) {
     try {
-        const apiKey = process.env.NEXT_PUBLIC_RESEND_MAIL_PROVIDER;
+        const apiKey = process.env.RESEND_MAIL_PROVIDER;
         console.log("API Key present:", !!apiKey);
 
         if (!apiKey) {

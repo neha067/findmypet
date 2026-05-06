@@ -26,6 +26,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { LatLngTuple } from "leaflet";
+import { generatePetTextEmbedding } from "@/lib/textEmbeddingUtils";
+import { saveEmbedding } from "@/lib/supabase";
 // No need to import default image functions - we use icons instead
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -298,6 +300,7 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
       }
 
       // Create a post for the social feed
+      let postDocRef;
       try {
         const postsRef = collection(db, "posts");
 
@@ -323,7 +326,7 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
           postTitle = postTitle.replace(/\b\w/g, l => l.toUpperCase());
         }
 
-        await addDoc(postsRef, {
+        postDocRef = await addDoc(postsRef, {
           title: postTitle,
           type: formData.postType,
           petType: formData.petType,
@@ -339,6 +342,39 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
           createdAt: serverTimestamp(),
           likeCount: 0,
         });
+
+
+        // Generate and save embedding for semantic search (non-blocking)
+        if (postDocRef) {
+          try {
+            // Prepare metadata for text embedding
+            const petMetadata = {
+              petType: formData.petType,
+              name: formData.name,
+              color: formData.color,
+              gender: formData.gender || "unknown",
+              age: formData.age || "unknown",
+              description: formData.description,
+              status: formData.postType,
+              type: formData.postType,
+              location: formData.location,
+              latitude: lat,
+              longitude: lng,
+              missingDate: missingDateObj,
+              reportedBy: {
+                name: username || user.displayName || "Anonymous",
+                email: user.email || "",
+              },
+            };
+
+            // Generate text embedding from metadata (replaces image-based embedding)
+            const embedding = await generatePetTextEmbedding(petMetadata);
+            await saveEmbedding(postDocRef.id, embedding);
+          } catch (embeddingError) {
+            console.error("Error saving embedding:", embeddingError);
+            // Don't throw - embedding is optional for functionality
+          }
+        }
       } catch (postError: any) {
         console.error("Error creating post:", postError);
         // Don't throw - cat was already saved, just log the error
@@ -473,7 +509,7 @@ const CreatePostForm = ({ onPostSuccess }: CreatePostFormProps) => {
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null;
                         handleInputChange("image", file);
-                        setAnalysisError(null);
+                        setAnalysisError(null); //to save api calls for development
                         setAnalysisResult(null);
                         handleAutofill(file)
                       }}

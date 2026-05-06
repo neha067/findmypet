@@ -10,7 +10,7 @@ type ImageAnalysis = {
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       console.error("OpenRouter API key not configured");
       return NextResponse.json(
